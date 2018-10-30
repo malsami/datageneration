@@ -1,7 +1,7 @@
 import sys
 sys.path.append('../')
 import value_init as VI
-import distributor_config as DC
+import parameter_config as PC
 
 
 # this needs to be filled with generated tasks
@@ -36,7 +36,7 @@ BADTASKSETS = { 1:[],
 				}
 
 
-APPLICABLE_TASKTYPES = DC.taskTypes # should be filled with the string literals ('hey', 'pi',...) of the task types, which shhould be used
+APPLICABLE_TASKTYPES = PC.taskTypes # should be filled with the string literals ('hey', 'pi',...) of the task types, which shhould be used
 
 MONITORLISTS = [] #holds triples (numberOfTasksInJob, numberOfProcessedTasksInJob, [])
 
@@ -92,11 +92,11 @@ def main():
 
 	# HAPPENS EVERY TIME
 	# initialize distributor on target plattform
-	distributor = Distributor(max_machine=DC.numberOfMachinesToStartWith, session_type=DC.sessionType, max_allowed=DC.maxAllowedNumberOfMachnes, logging_level=DC.loggingLevel, startup_delay=DC.delayAfterStartOfGenode, set_tries=DC.timesTasksetIsTriedBeforeLabeldBad, timeout=DC.genodeTimeout)
+	distributor = Distributor(max_machine=PC.numberOfMachinesToStartWith, session_type=PC.sessionType, max_allowed=PC.maxAllowedNumberOfMachnes, logging_level=PC.loggingLevel, startup_delay=PC.delayAfterStartOfGenode, set_tries=PC.timesTasksetIsTriedBeforeLabeldBad, timeout=PC.genodeTimeout)
 
 	# always generate DC.maxAllowedNumberOfMachnes tasksets, s.t. the machines don't have to wait
 	# have at least two jobs in the queue for continous execution
-	newJob = generate_job(numberOfTasksets=DC.maxAllowedNumberOfMachnes, tasksetSize=2)
+	newJob = generate_job(numberOfTasksets=PC.maxAllowedNumberOfMachnes, tasksetSize=2)
 	#add triple to MONITROLISTS after adding a new job
 	pass
 	while True:
@@ -123,7 +123,7 @@ if __name__ == '__main__':
 		main()
 	except KeyboardInterrupt:
 		print('\nInterrupted')
-		if session_type==sessions[0]:
+		if PC.sessionType=='QemuSession':
 			clean_function(42)
 		#logger.error('##################################################')
 		sys.exit(0)
