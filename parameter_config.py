@@ -13,7 +13,8 @@ genodeTimeout = 60
 
 taskTypes = ['hey'] # to use all available task types use the following list instead:['hey', 'pi', 'tumatmul', 'cond_mod', 'cond_42']
 
-tasksPerLine = 100
+tasksPerLine = 100 # number of tasks put in one list
+linesPerCall = 6 # lines per file written in one execution
 
 taskParameters = {	'PKG':
 						{1:'hey',

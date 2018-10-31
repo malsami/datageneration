@@ -67,29 +67,8 @@ def random_value(scope):
 def CRITICALTIME(period):
 	stoptime = 500
 	return period - stoptime
-"""
-PARAMS = {	'PKG':	
-					{1:'hey',
-            		 2:'pi',
-            		 3:'tumatmul',
-            		 4:'cond_mod',
-            		 5:'cond_42'
-            		},
-            'ARG':	{'hey':(0,1),
-        			 'pi':(2000,4000),
-        			 'tumatmul':(2000,4000),
-        			 'cond_mod':(2000,4000),
-        			 'cond_42':(2000,4000)
-        			},
-        	'PRIORITY': (1,127),
-        	'PERIOD': (1000,5000),
-        	'OFFSET': (0,1000),
-        	'NUMBEROFJOBS': (1,20),
-        	'QUOTA': (1, 10),
-        	'CAPS': (10, 50)
-        }
 
-"""
+
 def base_for_pkg(pkg):
     if pkg == 'cond_mod':
         return 3
@@ -117,10 +96,7 @@ def generate_tasks(n, parameters):
         i_quota = random_value(parameters['QUOTA'])
         i_caps = random_value(parameters['CAPS'])
         tasks[i_pkg].append(create_task(i_pkg, i_arg, i_criticaltime, i_numberofjobs, i_offset, i_period, i_priority, i_quota, i_caps))
-        
-    # for i in range(1,6):
-    #     print(PKG[i], len(tasks[PKG[i]]))
-    #     print(tasks[PKG[i]])
+    
     return tasks
 
 def generate_tasks_of_type(n, pkg, parameters):
