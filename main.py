@@ -40,15 +40,30 @@ APPLICABLE_TASKTYPES = DC.taskTypes # should be filled with the string literals 
 
 MONITORLISTS = [] #holds triples (numberOfTasksInJob, numberOfProcessedTasksInJob, [])
 
-def read_tasks(path='../datageneration/new_tasks'):
+def read_tasks(path='../datageneration/data_new_tasks_'):
 	# read from file provided in 'path' and load into TASKS and BADTASKS above
 	# possible format as string would be a tuple per line e.g.: ('hey', [Task, Task, ...])
-	pass
+
+	for package in PC.task_types:
+		with open(path + package) as task_file:
+			for task in task_file: # Every line is a task in this file
+				TASKS[package].append(task)
 
 
 def read_tasksets(path):
 	# read from file provided in 'path' and load into TASKS and BADTASKS above
 	# possible format as string would be a tuple per line e.g.: (1, [Taskset, Taskset, ...])
+
+	with open(path) as tasket_file:
+		for line in tasket_file:
+			line = line.split()
+			for l in line():
+				Taskets.append()
+
+""" Build the taskset list. 
+	When building the taskset of size n, it will combine the taskset of size n-1 with the tasksets of 1
+"""
+def create_taskset_list():
 	pass
 
 
@@ -60,6 +75,7 @@ def generate_job(numberOfTasksets=1, tasksetSize=1):
 	# otherwise, a new taskset is to be generated in its place
 	# the outputlist of ValueTestingMonitor can be accessed via its 'out' attribute
 	pass
+
 
 
 def check_monitors():
