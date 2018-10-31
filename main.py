@@ -61,22 +61,29 @@ def read_tasksets(path):
 	# possible format as string would be a tuple per line e.g.: (1, [Taskset, Taskset, ...])
 
 	with open(path) as tasket_file:
-		for line in tasket_file:
-			line = line.split()
-			for l in line():
-				Taskets.append()
+
+		# If sucessful task, load into 1
+
+		# Else load into bad. It should be the last column
 
 
 def write_tasksets_to_file():
-	for element in TASKSETS.items():
-		str(element)+ '\n'
-	pass
+
+	with open("taskset_file", "w") as f:
+		# Writing each taskset into the file
+		for element in TASKSETS.items():
+			f.write(str(element)+ '\n')
 
 """ Build the taskset list. 
 	When building the taskset of size n, it will combine the taskset of size n-1 with the tasksets of 1
 """
-def create_taskset_list():
-	pass
+def create_taskset_list(n):
+
+	if n == 1:
+		pass
+	else:
+		TASKSETS[n - 1] + TASKSETS[1] # merge lists
+		BADTASKSETS[n - 1] + BADTASKSETS[1]
 
 
 
