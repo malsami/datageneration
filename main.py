@@ -1,7 +1,9 @@
 import sys
 sys.path.append('../')
+sys.path.append('../taskgen')
 import value_init as VI
 import distributor_config as DC
+import task as Task
 
 
 # this needs to be filled with generated tasks
@@ -46,8 +48,12 @@ def read_tasks(path='../datageneration/data_new_tasks_'):
 
 	for package in PC.task_types:
 		with open(path + package) as task_file:
-			for task in task_file: # Every line is a task in this file
-				TASKS[package].append(task)
+			for line in task_file: # Every line is a task in this file
+				task_list = eval(line)
+
+				for i in range(len(task_list)):
+					task = Task(task_list[i]) # for readability
+					TASKS[package].append(task)
 
 
 def read_tasksets(path):
@@ -60,11 +66,18 @@ def read_tasksets(path):
 			for l in line():
 				Taskets.append()
 
+
+def write_tasksets_to_file():
+	for element in TASKSETS.items():
+		str(element)+ '\n'
+	pass
+
 """ Build the taskset list. 
 	When building the taskset of size n, it will combine the taskset of size n-1 with the tasksets of 1
 """
 def create_taskset_list():
 	pass
+
 
 
 def generate_job(numberOfTasksets=1, tasksetSize=1):
