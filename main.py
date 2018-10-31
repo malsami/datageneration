@@ -3,8 +3,9 @@ sys.path.append('../')
 sys.path.append('../taskgen')
 import value_init as VI
 import distributor_config as DC
-import task as Task
-
+from task import Task
+from taskset import TaskSet
+import copy
 
 # this needs to be filled with generated tasks
 TASKS = { 'hey':[],
@@ -42,6 +43,8 @@ APPLICABLE_TASKTYPES = DC.taskTypes # should be filled with the string literals 
 
 MONITORLISTS = [] #holds triples (numberOfTasksInJob, numberOfProcessedTasksInJob, [])
 
+INTERMEDIATE_TASKSET = []
+
 def read_tasks(path='../datageneration/data_new_tasks_'):
 	# read from file provided in 'path' and load into TASKS and BADTASKS above
 	# possible format as string would be a tuple per line e.g.: ('hey', [Task, Task, ...])
@@ -55,6 +58,8 @@ def read_tasks(path='../datageneration/data_new_tasks_'):
 					task = Task(task_list[i]) # for readability
 					TASKS[package].append(task)
 
+		# Number the tasksets of each package?
+		TaskSet(copy.deepcopy(TASKS[package]))
 
 def read_tasksets(path):
 	# read from file provided in 'path' and load into TASKS and BADTASKS above
@@ -69,18 +74,25 @@ def read_tasksets(path):
 
 def write_tasksets_to_file():
 
-	with open("taskset_file", "w") as f:
-		# Writing each taskset into the file
+	with open("bad_taskset_file", "w") as b_f:
+		# Writing bad taskset into the file
+		for element in BADTASKSETS.items():
+			b_f.write(str(element)+ '\n')
+
+	with open("good_taskset_file", "w") as g_f:
+		# Writing good taskset into the file
 		for element in TASKSETS.items():
-			f.write(str(element)+ '\n')
+			g_f.write(str(element) + '\n')
 
 """ Build the taskset list. 
 	When building the taskset of size n, it will combine the taskset of size n-1 with the tasksets of 1
 """
-def create_taskset_list(n):
+def create_taskset_list(n, package):
 
 	if n == 1:
-		pass
+		for package in TASKS:
+			TASKSETS[1].append(TASKS[package])
+			BADTASKSETS[1].append(BADTASKS[package])
 	else:
 		TASKSETS[n - 1] + TASKSETS[1] # merge lists
 		BADTASKSETS[n - 1] + BADTASKSETS[1]
