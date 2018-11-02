@@ -50,6 +50,12 @@ BADTASKSETS = {1: [],
 # tasksetTries=0 if successful; Job=(startTime, exitTime, eventType)
 MONITORLISTS = []
 
+POSSIBLETASKSETS = {1: [],
+               2: [],
+               3: [],
+               4: [],
+               5: []
+               }
 
 
 def read_tasks(path='../datageneration/data_new_tasks_'):
@@ -126,7 +132,19 @@ def write_tasksets_to_file(tasksetsAreEvaluated = False):
 
 def generate_possible_tasksets():
 	# filling POSSIBLETASKSETS dictionary
-    
+    if CURRENTTASKSETSIZE == 1:
+        for pkg in PC.taskTypes:
+            raw_taskset = TaskSet(TASKS[pkg]) # Assign the tasks to a specific Taskset
+            POSSIBLETASKSETS[1].append(raw_taskset)
+    else:
+        # Assuming we have already filled them
+
+        for i in range(len(TASKSETS[1])):
+            for j in range(len(TASKSETS[CURRENTTASKSETSIZE - 1])):
+                current_single_element = TASKSETS[1][i]
+                current_multi_element = TASKSETS[CURRENTTASKSETSIZE - 1][j]
+                TaskSet(copy.deepcopy(current_single_element + current_multi_element))
+
 
 
 def add_job(distributor, numberOfTasksets=1, tasksetSize=1):
