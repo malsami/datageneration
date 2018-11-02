@@ -123,27 +123,25 @@ def write_tasksets_to_file(tasksetsAreEvaluated = False):
 """
 
 
-def create_taskset_list(n, package):
+
+def generate_possible_tasksets():
+	# filling POSSIBLETASKSETS dictionary
     
 
 
 def add_job(distributor, numberOfTasksets=1, tasksetSize=1):
-    # returns the parameters for a distributor job as a tuple: ([Taskset], ValueTestingMonitor)
-    # [Taskset] is a new list of tasksets
+    # adds a new job of length numberOfTasksets to the distributor and add the monitors list (triple) to MONITORLISTS
+    # distributor.add_job([Taskset], DataGenerationMonitor)
     # the list is numberOfTasksets long and each Taskset consists of tasksetSize Tasks
-    # only new Tasksets (not contained in TASKSETS nor in BADTASKSETS) should be included
     # otherwise, a new taskset is to be generated in its place
-    # the outputlist of ValueTestingMonitor can be accessed via its 'out' attribute
-    # newJob =
-
-    # Pull from the primary taskset list
-
-    # Getting the last inserted element in the new taskset list
+    # the outputlist of DataGenerationMonitor can be accessed via its 'out' attribute
     
-
-    distributor.add_job(newJob[0], newJob[1])
-    MONITORLISTS.append((CURRENTTASKSETSIZE, 0, newJob[
-        1].out))  # this should happen in generate_job(), it could even add the job to a provided distributor
+    monitor = DataGenerationMonitor([])
+    tasksetList = []
+    # take numberOfTasksets Tasksets from POSSIBLETASKSETS and add them to tasksetList
+    # add them also to RUNNINGTASKSETS
+    distributor.add_job(tasksetList, monitor)
+    MONITORLISTS.append((len(tasksetList), 0, monitor.out))
 
 
 def check_monitors():
