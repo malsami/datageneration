@@ -139,7 +139,13 @@ def add_job(distributor, numberOfTasksets=1, tasksetSize=1):
     monitor = DataGenerationMonitor([])
     tasksetList = []
     # take numberOfTasksets Tasksets from POSSIBLETASKSETS and add them to tasksetList
-    # add them also to RUNNINGTASKSETS
+    for i in range(numberOfTasksets):
+    	try:
+    		tasksetList += POSSIBLETASKSETS[tasksetSize].pop()
+    		# add them also to RUNNINGTASKSETS
+    		RUNNINGTASKSETS[tasksetSize].append(tasksetList[-1])
+    	except IndexError:
+    		break
     distributor.add_job(tasksetList, monitor)
     MONITORLISTS.append((len(tasksetList), 0, monitor.out))
 
@@ -155,8 +161,8 @@ def check_monitors():
             try:
                 while True:  # until empty:
                     # pop first element and sort into correct attribute
-                    executionInformation = MONITORLISTS[index][2].pop(0)
-                    evaluate_taskset(executionInformation)
+                    taskset = MONITORLISTS[index][2].pop(0)
+                    evaluate_taskset(taskset)
                     # increment MONITORLISTS[index][1] which is numberOfProcessedTasksInJob
                     MONITORLISTS[index][1] += 1
             except IndexError:
@@ -164,12 +170,21 @@ def check_monitors():
     for i in indicesToBeRemoved.sort(
             reverse=True):  # so we dont have to worry about messing the indices up when deleting elements
         del MONITORLISTS[i]
-    pass
 
 
-def evaluate_taskset(tasksetInfo):
+def evaluate_taskset(taskset):
     # This will evaluate the provided taskset and sort it into the according attribute
-    pass
+    successful = True
+    tasksetSize = 0
+    for task in taskset:
+    	tasksetSize += 1
+    	for job in task['jobs']:
+    		successful = successful and job[2] == 'EXIT'
+    if successful:
+    	TASKSETS[tasksetSize].append(taskset)
+    else:
+    	BADTASKSETS[tasksetSize].append(taskset)
+    RUNNINGTASKSETS[tasksetSize].remove(taskset)
 
 
 def currentTasksetSizeExhauseted():
