@@ -206,18 +206,11 @@ def evaluate_taskset(taskset):
 
 
 def currentTasksetSizeExhauseted():
-    # changes RUNNING
-    # once all possible combinations of tasks or tasksets are exhausted,
-    # increase the level of tasks per set
-    # ( check by total number of TASKSETS and BADTASKSETS for that length and compare
-    # to combinatorial value from length below (length of tasks for tasksetsize=1) )
-    pass
-
-
-def more_tasksets():
-    # once the length of the added jobs (can check MONITORLISTS) drops under a certain threshold,
-    # generate more jobs and add them to the job_list in the distributor
-    pass
+    if not POSSIBLETASKSETS[CURRENTTASKSETSIZE]:
+    	CURRENTTASKSETSIZE += 1
+    	generate_possible_tasksets()
+    	if not POSSIBLETASKSETS[CURRENTTASKSETSIZE]:
+    		RUNNING = False
 
 
 def main(initialExecution=True):
@@ -241,7 +234,7 @@ def main(initialExecution=True):
                               startup_delay=PC.delayAfterStartOfGenode, set_tries=PC.timesTasksetIsTriedBeforeLabeldBad,
                               timeout=PC.genodeTimeout)
 
-    # always generate DC.maxAllowedNumberOfMachnes tasksets, s.t. the machines don't have to wait
+    # always generate PC.maxAllowedNumberOfMachnes tasksets, s.t. the machines don't have to wait
     # have at least two jobs in the queue for continous execution
     add_job(distributor=distributor, numberOfTasksets=PC.maxAllowedNumberOfMachnes, tasksetSize=CURRENTTASKSETSIZE)
     # add triple to MONITORLISTS after adding a new job
@@ -290,8 +283,9 @@ def main(initialExecution=True):
         # unrelated to user input:
         check_monitors()  # check if a taskset is finished and put it into according attribute
         currentTasksetSizeExhauseted()  # increments CURRENTTASKSETSIZE if current size is exhausted
-        more_tasksets()  # adds more jobs, once there are not enough left
-        # end of while
+        if len(RUNNINGTASKSETS[CURRENTTASKSETSIZE]) < PC.maxAllowedNumberOfMachnes * 2:
+    		add_job(distributor=distributor, numberOfTasksets=PC.maxAllowedNumberOfMachnes, tasksetSize=CURRENTTASKSETSIZE)
+    # end of while
 
         # when finished save all data to textfile or pickle it to a file adjust read_tasks and read_tasksets accoringly
         # including TASKS, BADTASKS, TASKSETS, BADTASKSETS
