@@ -140,10 +140,12 @@ def generate_possible_tasksets():
         # Assuming we have already filled them
 
         for i in range(len(TASKSETS[1])):
+            j = i # To avoid duplicate tasks
             for j in range(len(TASKSETS[CURRENTTASKSETSIZE - 1])):
                 current_single_element = TASKSETS[1][i]
                 current_multi_element = TASKSETS[CURRENTTASKSETSIZE - 1][j]
-                TaskSet(copy.deepcopy(current_single_element + current_multi_element))
+                combined_raw_taskset = current_single_element + current_multi_element
+                POSSIBLETASKSETS[CURRENTTASKSETSIZE].append(copy.deepcopy(combined_raw_taskset))
 
 
 
