@@ -67,7 +67,7 @@ def read_tasks(path='../datageneration/data_new_tasks_'):
                     TASKS[package].append(task)
 
 
-def read_tasksets(path):
+def read_tasksets(path = "unevaluated_taskset", resume_running_taskset = True):
     # read from file provided in 'path' and load into TASKS and BADTASKS above
     # possible format as string would be a tuple per line e.g.: (1, [Taskset, Taskset, ...])
 
@@ -75,6 +75,7 @@ def read_tasksets(path):
 
     global TASKSETS
     global BADTASKSETS
+    global RUNNINGTASKSETS
 
     for package in PC.taskTypes:
         with open(path) as tasket_file:
@@ -83,10 +84,15 @@ def read_tasksets(path):
                 size = taskset_object[0]
                 taskset = taskset_object[1]
 
-                if (evaluate_taskset(taskset)):
-                    TASKSETS[size].append(taskset)
+                # Whether we want to pick up where we were last writing or we want to read the marked files
+                if resume_running_taskset:
+                    RUNNINGTASKSETS[size].append(taskset)
                 else:
-                    BADTASKSETS[size].append(taskset)
+                    if  evaluate_taskset(taskset):
+                        TASKSETS[size].append(taskset)
+                    else:
+                        BADTASKSETS[size].append(taskset)
+
 
 """
     This function is for basic book-keeping and we will write the good,bad,and unevaluated tasksets into the appropriate
