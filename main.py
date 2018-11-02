@@ -62,15 +62,13 @@ def read_tasks(path='../datageneration/data_new_tasks_'):
 
 	for package in PC.task_types:
 		with open(path + package) as task_file:
-			for line in task_file: # Every line is a task in this file
+			for line in task_file: # Every line is a list of tasks in this file
 				task_list = eval(line)
 
-				for i in range(len(task_list)):
-					task = Task(task_list[i]) # for readability
+				for taskString in range(len(task_list)):
+					task = Task(task_list[taskString]) # for readability
 					TASKS[package].append(task)
 
-		# Number the tasksets of each package?
-		TaskSet(copy.deepcopy(TASKS[package]))
 
 def read_tasksets(path):
 	# read from file provided in 'path' and load into TASKS and BADTASKS above
@@ -110,13 +108,16 @@ def create_taskset_list(n, package):
 
 
 
-def generate_job(numberOfTasksets=1, tasksetSize=1):
+def add_job(distributor, numberOfTasksets=1, tasksetSize=1):
 	# returns the parameters for a distributor job as a tuple: ([Taskset], ValueTestingMonitor)
 	# [Taskset] is a new list of tasksets
 	# the list is numberOfTasksets long and each Taskset consists of tasksetSize Tasks
 	# only new Tasksets (not contained in TASKSETS nor in BADTASKSETS) should be included
 	# otherwise, a new taskset is to be generated in its place
 	# the outputlist of ValueTestingMonitor can be accessed via its 'out' attribute
+	distributor.add_job(newJob[0], newJob[1])
+	MONITORLISTS.append((CURRENTTASKSETSIZE, 0, newJob[1].out)) #this should happen in generate_job(), it could even add the job to a provided distributor
+	
 	pass
 
 
@@ -183,10 +184,8 @@ def main(initialExecution=True):
 
 	# always generate DC.maxAllowedNumberOfMachnes tasksets, s.t. the machines don't have to wait
 	# have at least two jobs in the queue for continous execution
-	newJob = generate_job(numberOfTasksets=PC.maxAllowedNumberOfMachnes, tasksetSize=CURRENTTASKSETSIZE)
+	add_job(distributor=distributor, numberOfTasksets=PC.maxAllowedNumberOfMachnes, tasksetSize=CURRENTTASKSETSIZE)
 	#add triple to MONITORLISTS after adding a new job
-	distributor.add_job(newJob[0], newJob[1])
-	MONITORLISTS.append((CURRENTTASKSETSIZE, 0, newJob[1].out)) #this should happen in generate_job(), it could even add the job to a provided distributor
 	# creating a signal for alarm - will be called upton alarm
 	signal(SIGALRM, lambda x, y: 1/0)
 	# have output to explain controll options
