@@ -8,7 +8,7 @@ maxAllowedNumberOfMachnes = 3
 loggingLevel = logging.DEBUG
 delayAfterStartOfGenode = 60
 timesTasksetIsTriedBeforeLabeldBad = 2
-genodeTimeout = 60
+genodeTimeout = 30
 
 
 taskTypes = ['hey'] # to use all available task types use the following list instead:['hey', 'pi', 'tumatmul', 'cond_mod', 'cond_42']

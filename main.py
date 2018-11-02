@@ -4,6 +4,7 @@ sys.path.append('../')
 from signal import signal, alarm, SIGALRM
 from distributor_service.distributor import Distributor
 from distributor_service.monitors.dataGenerationMonitor import DataGenerationMonitor
+from distributor_service.clean import clean_function
 import value_init as VI
 from taskgen.task import Task
 from taskgen.taskset import TaskSet
@@ -43,9 +44,7 @@ BADTASKSETS = {1: [],
                5: []
                }
 
-# holds triples (numberOfTasksInJob, numberOfProcessedTasksInJob, [])
-# elements of the list (third item) follow this format:
-# (tasksetTries, {id : (Task, [Job]) })
+# holds triples as list [numberOfTasksInJob, numberOfProcessedTasksInJob, [Taskset]]
 # tasksetTries=0 if successful; Job=(startTime, exitTime, eventType)
 MONITORLISTS = []
 
@@ -169,7 +168,7 @@ def add_job(distributor, numberOfTasksets=1, tasksetSize=1):
         except IndexError:
             break
     distributor.add_job(tasksetList, monitor=monitor, is_list=True)
-    MONITORLISTS.append((len(tasksetList), 0, monitor.out))
+    MONITORLISTS.append([len(tasksetList), 0, monitor.out])
 
 
 def check_monitors():
@@ -204,7 +203,7 @@ def evaluate_taskset(taskset):
     tasksetSize = 0
     for task in taskset:
         tasksetSize += 1
-        for job in task['jobs']:
+        for _, job in task['jobs'].items():
             successful = successful and job[2] == 'EXIT'
     if successful:
         TASKSETS[tasksetSize].append(taskset)
