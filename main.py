@@ -5,18 +5,10 @@ from signal import signal, alarm, SIGALRM
 from distributor_service.distributor import Distributor
 from distributor_service.monitors.dataGenerationMonitor import DataGenerationMonitor
 import value_init as VI
-import distributor_config as DC
 from taskgen.task import Task
 from taskgen.taskset import TaskSet
 import copy
 import parameter_config as PC
-
-NEW_TASKS = {'hey': [],
-             'pi': [],
-             'tumatmul': [],
-             'cond_mod': [],
-             'cond_42': []
-             }
 
 # this needs to be filled with generated tasks
 TASKS = {'hey': [],
@@ -26,13 +18,11 @@ TASKS = {'hey': [],
          'cond_42': []
          }
 
-# this will be filled throughout execution / can be used as lookup to avoid generating additional bad set,
-# which were already executed
-BADTASKS = {'hey': [],
-            'pi': [],
-            'tumatmul': [],
-            'cond_mod': [],
-            'cond_42': []
+RUNNINGTASKSETS = {1: [],
+            2: [],
+            3: [],
+            4: [],
+            5: []
             }
 
 CURRENTTASKSETSIZE = 1
@@ -53,7 +43,6 @@ BADTASKSETS = {1: [],
                5: []
                }
 
-APPLICABLE_TASKTYPES = PC.taskTypes  # should be filled with the string literals ('hey', 'pi',...) of the task types, which shhould be used
 
 # holds triples (numberOfTasksInJob, numberOfProcessedTasksInJob, [])
 # elements of the list (third item) follow this format:
@@ -61,18 +50,12 @@ APPLICABLE_TASKTYPES = PC.taskTypes  # should be filled with the string literals
 # tasksetTries=0 if successful; Job=(startTime, exitTime, eventType)
 MONITORLISTS = []
 
-NEW_TASKSET = {1: [],
-                        2: [],
-                        3: [],
-                        4: [],
-                        5: []
-                        }
 
 
 def read_tasks(path='../datageneration/data_new_tasks_'):
     # read from file provided in 'path' and load into TASKS and BADTASKS above
     # possible format as string would be a tuple per line e.g.: ('hey', [Task, Task, ...])
-    global NEW_TASKS
+    global TASKS
 
     for package in PC.taskTypes:
         with open(path + package) as task_file:
@@ -81,7 +64,7 @@ def read_tasks(path='../datageneration/data_new_tasks_'):
 
                 for taskString in range(len(task_list)):
                     task = Task(task_list[taskString])  # for readability
-                    NEW_TASKS[package].append(task)
+                    TASKS[package].append(task)
 
 
 def read_tasksets(path):
@@ -125,7 +108,7 @@ def write_tasksets_to_file(tasksetsAreEvaluated = False):
     else:
         with open("unevaluated_taskset", "w") as u_f:
             # Writing the tasksets which have not been evaluated yet
-            for element in NEW_TASKSET.items():
+            for element in RUNNINGTASKSETS.items():
                 u_f.write(str(element) + '\n')
 
 
@@ -135,26 +118,7 @@ def write_tasksets_to_file(tasksetsAreEvaluated = False):
 
 
 def create_taskset_list(n, package):
-    global TASKSETS
-    global BADTASKSETS
-
-    if n == 1:
-        # WARNING. This way will store the tasks in order of package name, "hey,pi,tumatmul,...."
-        for package in PC.taskTypes:
-            TASKSETS[1].append(TASKS[package])
-            BADTASKSETS[1].append(BADTASKS[package])
-
-    else:
-        # Make copies of both lists and then combine them
-
-        for package in PC.taskTypes:
-            copy_badtaskset_single_list = copy.deepcopy(BADTASKSETS[1])
-            copy_goodtaskset_single_list = copy.deepcopy(TASKSETS[1])
-            copy_badtaskset_multiple_list = copy.deepcopy(BADTASKSETS[n - 1])
-            copy_goodtaskset_multiple_list = copy.deepcopy(TASKSETS[n - 1])
-
-            TASKSETS[n] = copy_goodtaskset_multiple_list + copy_goodtaskset_single_list  # merge lists
-            BADTASKSETS[n] = copy_badtaskset_multiple_list + copy_badtaskset_single_list
+    
 
 
 def add_job(distributor, numberOfTasksets=1, tasksetSize=1):
@@ -169,9 +133,7 @@ def add_job(distributor, numberOfTasksets=1, tasksetSize=1):
     # Pull from the primary taskset list
 
     # Getting the last inserted element in the new taskset list
-    new_taskset = NEW_TASKSET[tasksetSize][-1]
-
-    new_taskset
+    
 
     distributor.add_job(newJob[0], newJob[1])
     MONITORLISTS.append((CURRENTTASKSETSIZE, 0, newJob[
