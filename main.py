@@ -60,7 +60,7 @@ def read_tasks(path='../datageneration/data_new_tasks_'):
 	# read from file provided in 'path' and load into TASKS and BADTASKS above
 	# possible format as string would be a tuple per line e.g.: ('hey', [Task, Task, ...])
 
-	for package in PC.task_types:
+	for package in PC.taskTypes:
 		with open(path + package) as task_file:
 			for line in task_file: # Every line is a list of tasks in this file
 				task_list = eval(line)
@@ -74,8 +74,12 @@ def read_tasksets(path):
 	# read from file provided in 'path' and load into TASKS and BADTASKS above
 	# possible format as string would be a tuple per line e.g.: (1, [Taskset, Taskset, ...])
 
-	with open(path) as tasket_file:
 
+	write_tasksets_to_file()
+
+	for package	in PC.taskTypes:
+		with open(path) as tasket_file:
+			for line in tasket_file:
 		# If sucessful task, load into 1
 
 		# Else load into bad. It should be the last column
@@ -98,13 +102,28 @@ def write_tasksets_to_file():
 """
 def create_taskset_list(n, package):
 
+	global TASKSETS
+	global BADTASKSETS
+
 	if n == 1:
-		for package in TASKS:
+		# WARNING. This way will store the tasks in order of package name, "hey,pi,tumatmul,...."
+		for package in PC.taskTypes:
+
 			TASKSETS[1].append(TASKS[package])
 			BADTASKSETS[1].append(BADTASKS[package])
+
 	else:
-		TASKSETS[n - 1] + TASKSETS[1] # merge lists
-		BADTASKSETS[n - 1] + BADTASKSETS[1]
+		# Make copies of both lists and then combine them
+
+		for package in PC.taskTypes:
+
+			copy_badtaskset_single_list = copy.deepcopy(BADTASKSETS[1])
+			copy_goodtaskset_single_list = copy.deepcopy(TASKSETS[1])
+			copy_badtaskset_multiple_list = copy.deepcopy(BADTASKSETS[n-1])
+			copy_goodtaskset_multiple_list = copy.deepcopy(TASKSETS[n-1])
+
+			TASKSETS[n] = copy_goodtaskset_multiple_list + copy_goodtaskset_single_list # merge lists
+			BADTASKSETS[n] = copy_badtaskset_multiple_list + copy_goodtaskset_single_list
 
 
 
