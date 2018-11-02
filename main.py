@@ -1,10 +1,9 @@
 import sys
 sys.path.append('../')
-sys.path.append('../taskgen')
 import value_init as VI
 import distributor_config as DC
-from task import Task
-from taskset import TaskSet
+from taskgen.task import Task
+from taskgen.taskset import TaskSet
 import copy
 
 # this needs to be filled with generated tasks
@@ -74,12 +73,12 @@ def read_tasksets(path):
 
 def write_tasksets_to_file():
 
-	with open("bad_taskset_file", "w") as b_f:
+	with open("data_bad_taskset", "w") as b_f:
 		# Writing bad taskset into the file
 		for element in BADTASKSETS.items():
 			b_f.write(str(element)+ '\n')
 
-	with open("good_taskset_file", "w") as g_f:
+	with open("data_good_taskset", "w") as g_f:
 		# Writing good taskset into the file
 		for element in TASKSETS.items():
 			g_f.write(str(element) + '\n')
@@ -134,7 +133,7 @@ def main():
 
 	# RESUME EXECUTION:
 	# 	- load potential previous findings into attributes (load state)
-	currentTasksetSize = # provide an value as arg
+	currentTasksetSize = 1# provide an value as arg
 	read_tasks('providing path to previous saved data') # provide filepath as argument
 	read_tasksets('providing path to previous saved data') # provide filepath as argument
 
