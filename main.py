@@ -3,6 +3,7 @@ import sys
 sys.path.append('../')
 from signal import signal, alarm, SIGALRM
 from distributor_service.distributor import Distributor
+from distributor_service.monitors.dataGenerationMonitor import DataGenerationMonitor
 import value_init as VI
 import distributor_config as DC
 from taskgen.task import Task
@@ -60,7 +61,12 @@ APPLICABLE_TASKTYPES = PC.taskTypes  # should be filled with the string literals
 # tasksetTries=0 if successful; Job=(startTime, exitTime, eventType)
 MONITORLISTS = []
 
-INTERMEDIATE_TASKSET = []
+NEW_TASKSET = {1: [],
+                        2: [],
+                        3: [],
+                        4: [],
+                        5: []
+                        }
 
 
 def read_tasks(path='../datageneration/data_new_tasks_'):
@@ -99,17 +105,28 @@ def read_tasksets(path):
                 else:
                     BADTASKSETS[size].append(taskset)
 
+"""
+    This function is for basic book-keeping and we will write the good,bad,and unevaluated tasksets into the appropriate
+    files. 
+"""
+def write_tasksets_to_file(tasksetsAreEvaluated = False):
 
-def write_tasksets_to_file():
-    with open("data_bad_taskset", "w") as b_f:
-        # Writing bad taskset into the file
-        for element in BADTASKSETS.items():
-            b_f.write(str(element) + '\n')
 
-    with open("data_good_taskset", "w") as g_f:
-        # Writing good taskset into the file
-        for element in TASKSETS.items():
-            g_f.write(str(element) + '\n')
+    if(tasksetsAreEvaluated):
+        with open("data_bad_taskset", "w") as b_f:
+            # Writing bad taskset into the file
+            for element in BADTASKSETS.items():
+                b_f.write(str(element) + '\n')
+
+        with open("data_good_taskset", "w") as g_f:
+            # Writing good taskset into the file
+            for element in TASKSETS.items():
+                g_f.write(str(element) + '\n')
+    else:
+        with open("unevaluated_taskset", "w") as u_f:
+            # Writing the tasksets which have not been evaluated yet
+            for element in NEW_TASKSET.items():
+                u_f.write(str(element) + '\n')
 
 
 """ Build the taskset list. 
@@ -147,6 +164,15 @@ def add_job(distributor, numberOfTasksets=1, tasksetSize=1):
     # only new Tasksets (not contained in TASKSETS nor in BADTASKSETS) should be included
     # otherwise, a new taskset is to be generated in its place
     # the outputlist of ValueTestingMonitor can be accessed via its 'out' attribute
+    # newJob =
+
+    # Pull from the primary taskset list
+
+    # Getting the last inserted element in the new taskset list
+    new_taskset = NEW_TASKSET[tasksetSize][-1]
+
+    new_taskset
+
     distributor.add_job(newJob[0], newJob[1])
     MONITORLISTS.append((CURRENTTASKSETSIZE, 0, newJob[
         1].out))  # this should happen in generate_job(), it could even add the job to a provided distributor
