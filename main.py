@@ -3,8 +3,11 @@ sys.path.append('../')
 from signal import signal, alarm, SIGALRM
 from distributor_service.distributor import Distributor
 import value_init as VI
+import distributor_config as DC
+from taskgen.task import Task
+from taskgen.taskset import TaskSet
+import copy
 import parameter_config as PC
-
 
 
 # this needs to be filled with generated tasks
@@ -51,16 +54,60 @@ APPLICABLE_TASKTYPES = PC.taskTypes # should be filled with the string literals 
 MONITORLISTS = [] 
 
 
-def read_tasks(path='../datageneration/new_tasks'):
+INTERMEDIATE_TASKSET = []
+
+def read_tasks(path='../datageneration/data_new_tasks_'):
 	# read from file provided in 'path' and load into TASKS and BADTASKS above
 	# possible format as string would be a tuple per line e.g.: ('hey', [Task, Task, ...])
-	pass
 
+	for package in PC.task_types:
+		with open(path + package) as task_file:
+			for line in task_file: # Every line is a task in this file
+				task_list = eval(line)
+
+				for i in range(len(task_list)):
+					task = Task(task_list[i]) # for readability
+					TASKS[package].append(task)
+
+		# Number the tasksets of each package?
+		TaskSet(copy.deepcopy(TASKS[package]))
 
 def read_tasksets(path):
 	# read from file provided in 'path' and load into TASKS and BADTASKS above
 	# possible format as string would be a tuple per line e.g.: (1, [Taskset, Taskset, ...])
-	pass
+
+	with open(path) as tasket_file:
+
+		# If sucessful task, load into 1
+
+		# Else load into bad. It should be the last column
+
+
+def write_tasksets_to_file():
+
+	with open("data_bad_taskset", "w") as b_f:
+		# Writing bad taskset into the file
+		for element in BADTASKSETS.items():
+			b_f.write(str(element)+ '\n')
+
+	with open("data_good_taskset", "w") as g_f:
+		# Writing good taskset into the file
+		for element in TASKSETS.items():
+			g_f.write(str(element) + '\n')
+
+""" Build the taskset list. 
+	When building the taskset of size n, it will combine the taskset of size n-1 with the tasksets of 1
+"""
+def create_taskset_list(n, package):
+
+	if n == 1:
+		for package in TASKS:
+			TASKSETS[1].append(TASKS[package])
+			BADTASKSETS[1].append(BADTASKS[package])
+	else:
+		TASKSETS[n - 1] + TASKSETS[1] # merge lists
+		BADTASKSETS[n - 1] + BADTASKSETS[1]
+
 
 
 def generate_job(numberOfTasksets=1, tasksetSize=1):
@@ -71,6 +118,7 @@ def generate_job(numberOfTasksets=1, tasksetSize=1):
 	# otherwise, a new taskset is to be generated in its place
 	# the outputlist of ValueTestingMonitor can be accessed via its 'out' attribute
 	pass
+
 
 
 def check_monitors():
