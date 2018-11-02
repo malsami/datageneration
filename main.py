@@ -57,7 +57,7 @@ POSSIBLETASKSETS = {1: [],
                     }
 
 
-def read_tasks(path='../datageneration/data_new_tasks_'):
+def read_tasks(path='./data_new_tasks_'):
     # read from file provided in 'path' and load into TASKS and BADTASKS above
     # possible format as string would be a tuple per line e.g.: ('hey', [Task, Task, ...])
     global TASKS
@@ -106,24 +106,21 @@ def read_tasksets(path="./unevaluated_taskset", resume_running_taskset=True):
 
 
 def write_tasksets_to_file(includeUnfinishedTasksets=True):
-    with open("./data_bad_taskset", "w") as b_f:
-    # Writing bad taskset into the file
-    for element in BADTASKSETS.items():
-        b_f.write(str(element) + '\n')
-
-
-with open("./data_good_taskset", "w") as g_f:
-    # Writing good taskset into the file
-    for element in TASKSETS.items():
-        g_f.write(str(element) + '\n')
-if includeUnfinishedTasksets:
-    with open("./unevaluated_taskset", "w") as u_f:
-        # Writing the tasksets which have not been evaluated yet
-        for element in RUNNINGTASKSETS.items():
-            u_f.write(str(element) + '\n')
+    with open("./data_bad_taskset", "w") as bad_f:
+        # Writing bad taskset into the file
+        for element in BADTASKSETS.items():
+            bad_f.write(str(element) + '\n')
+    with open("./data_good_taskset", "w") as good_f: # Writing good taskset into the file
+        for element in TASKSETS.items():
+            good_f.write(str(element) + '\n')
+    if includeUnfinishedTasksets:
+        with open("./unevaluated_taskset", "w") as unfinished_f:
+            # Writing the tasksets which have not been evaluated yet
+            for element in RUNNINGTASKSETS.items():
+                unfinished_f.write(str(element) + '\n')
 
 """ Build the taskset list. 
-	When building the taskset of size n, it will combine the taskset of size n-1 with the tasksets of 1
+    When building the taskset of size n, it will combine the taskset of size n-1 with the tasksets of 1
 """
 
 
@@ -132,12 +129,16 @@ def generate_possible_tasksets():
     if CURRENTTASKSETSIZE == 1:
         for pkg in PC.taskTypes:
             for task in TASKS[pkg]:
-                raw_taskset = TaskSet([task])  # Assign the tasks to a specific Taskset
-                POSSIBLETASKSETS[1].append(raw_taskset)
+                #print(type(task))
+                taskset = TaskSet([]) # Assign the tasks to a specific Taskset
+                #print(type(taskset))
+                taskset.append(task)
+                #print(type(taskset), taskset)
+                POSSIBLETASKSETS[1].append(taskset)
     else:
         for i in range(len(TASKSETS[1])):
             limiter = 0
-            if CURRENTTASKSETSIZE == 2
+            if CURRENTTASKSETSIZE == 2:
                 limiter = i + 1
             for j in range(limiter, len(TASKSETS[CURRENTTASKSETSIZE - 1])):
                 current_single_element = copy.deepcopy(TASKSETS[1][i])
@@ -162,12 +163,12 @@ def add_job(distributor, numberOfTasksets=1, tasksetSize=1):
     # take numberOfTasksets Tasksets from POSSIBLETASKSETS and add them to tasksetList
     for i in range(numberOfTasksets):
         try:
-            tasksetList += POSSIBLETASKSETS[tasksetSize].pop()
+            tasksetList.append(POSSIBLETASKSETS[tasksetSize].pop())
             # add them also to RUNNINGTASKSETS
             RUNNINGTASKSETS[tasksetSize].append(tasksetList[-1])
         except IndexError:
             break
-    distributor.add_job(tasksetList, monitor)
+    distributor.add_job(tasksetList, monitor=monitor, is_list=True)
     MONITORLISTS.append((len(tasksetList), 0, monitor.out))
 
 
@@ -188,13 +189,17 @@ def check_monitors():
                     MONITORLISTS[index][1] += 1
             except IndexError:
                 continue
-    for i in indicesToBeRemoved.sort(
-            reverse=True):  # so we dont have to worry about messing the indices up when deleting elements
+    indicesToBeRemoved.sort(reverse=True)
+    for i in indicesToBeRemoved:  # so we dont have to worry about messing the indices up when deleting elements
         del MONITORLISTS[i]
 
 
 def evaluate_taskset(taskset):
+    global TASKSETS
+    global BADTASKSETS
+    global RUNNINGTASKSETS
     # This will evaluate the provided taskset and sort it into the according attribute
+    print('eval method')
     successful = True
     tasksetSize = 0
     for task in taskset:
@@ -209,6 +214,9 @@ def evaluate_taskset(taskset):
 
 
 def currentTasksetSizeExhauseted():
+    global POSSIBLETASKSETS
+    global CURRENTTASKSETSIZE
+    global RUNNING
     if not POSSIBLETASKSETS[CURRENTTASKSETSIZE]:
         CURRENTTASKSETSIZE += 1
         generate_possible_tasksets()
@@ -218,12 +226,19 @@ def currentTasksetSizeExhauseted():
 
 def main(initialExecution=True):
     global CURRENTTASKSETSIZE
+    global RUNNINGTASKSETS
+    global TASKSETS
+    global BADTASKSETS
     # FIRST TIME and RESUME: only one of the two will be executed
     if initialExecution:
         # FIRST TIME EXECUTION:
         #	- generate tasks outside and just read from file, on command filling the TASKS dict (load initial state)
         read_tasks()
+        #print(type(TASKS['hey']))
+        #print(TASKS['hey'][0:5])
+    
         generate_possible_tasksets()
+        # print('HEEEEREEEE\n\n\n',type(POSSIBLETASKSETS[1][0]))
     else:
         # RESUME EXECUTION:
         # 	- load potential previous findings into attributes (load state)
@@ -274,7 +289,8 @@ def main(initialExecution=True):
             # resume execution of the scheduled tasksets
             print(inputMessage)
         elif option == 's':
-            # save current progress to file TODO: more thinking about continous execution and saving data
+            # saving current progress (TASKSETS, BADTASKSETS)
+            write_tasksets_to_file(includeUnfinishedTasksets=False)
             print(inputMessage)
         elif option == 'x':
             # a clean exit that aborts execution and saves current findings and clean up if qemusession
@@ -284,7 +300,7 @@ def main(initialExecution=True):
         else:
             print(option, 'was not a possible option!')
             print(inputMessage)
-
+        print('\n\n\n\n\n',TASKSETS,'\n\n\n\n',BADTASKSETS,'\n\n\n\n', RUNNINGTASKSETS,'\n\n\n\n',MONITORLISTS)
         # unrelated to user input:
         check_monitors()  # check if a taskset is finished and put it into according attribute
         currentTasksetSizeExhauseted()  # increments CURRENTTASKSETSIZE if current size is exhausted

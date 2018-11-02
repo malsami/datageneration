@@ -1,10 +1,10 @@
 import logging
 # these are parameters to configure the distributor
 availableSessions = ['QemuSession','PandaSession']
-sessionType = availableSessions[1]
+sessionType = availableSessions[0]
 
 numberOfMachinesToStartWith = 1
-maxAllowedNumberOfMachnes = 1
+maxAllowedNumberOfMachnes = 3
 loggingLevel = logging.DEBUG
 delayAfterStartOfGenode = 60
 timesTasksetIsTriedBeforeLabeldBad = 2
@@ -33,7 +33,7 @@ taskParameters = {	'PKG':
 				'PRIORITY': (1,127), # think we can put constraint on this and just provide maybe 5 different values, so values appear more often and in the end with fp scheduling only the difference should matter(?)
 				'PERIOD': (1,8),
 				'OFFSET': (0,1),
-				'NUMBEROFJOBS': (1,10),
+				'NUMBEROFJOBS': (1,1),#(1,10),
 				'QUOTA': (100, 100), #(1, 100),# we could just assign arbitrary big values to this and to caps as well, cause a working task, which is the assumption for an initial taskset, would have good values for that and both (caps and ram) are available in abundance 
 				'CAPS': (235, 235) #(10, 235)
 				}
