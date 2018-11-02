@@ -73,7 +73,7 @@ def read_tasks(path='../datageneration/data_new_tasks_'):
                     TASKS[package].append(task)
 
 
-def read_tasksets(path = "unevaluated_taskset", resume_running_taskset = True):
+def read_tasksets(path = "./unevaluated_taskset", resume_running_taskset = True):
     # read from file provided in 'path' and load into TASKS and BADTASKS above
     # possible format as string would be a tuple per line e.g.: (1, [Taskset, Taskset, ...])
 
@@ -104,21 +104,18 @@ def read_tasksets(path = "unevaluated_taskset", resume_running_taskset = True):
     This function is for basic book-keeping and we will write the good,bad,and unevaluated tasksets into the appropriate
     files. 
 """
-def write_tasksets_to_file(tasksetsAreEvaluated = False):
+def write_tasksets_to_file(includeUnfinishedTasksets=True):
+	with open("./data_bad_taskset", "w") as b_f:
+		# Writing bad taskset into the file
+        for element in BADTASKSETS.items():
+            b_f.write(str(element) + '\n')
 
-
-    if(tasksetsAreEvaluated):
-        with open("data_bad_taskset", "w") as b_f:
-            # Writing bad taskset into the file
-            for element in BADTASKSETS.items():
-                b_f.write(str(element) + '\n')
-
-        with open("data_good_taskset", "w") as g_f:
-            # Writing good taskset into the file
-            for element in TASKSETS.items():
-                g_f.write(str(element) + '\n')
-    else:
-        with open("unevaluated_taskset", "w") as u_f:
+    with open("./data_good_taskset", "w") as g_f:
+        # Writing good taskset into the file
+        for element in TASKSETS.items():
+            g_f.write(str(element) + '\n')
+    if includeUnfinishedTasksets:
+        with open("./unevaluated_taskset", "w") as u_f:
             # Writing the tasksets which have not been evaluated yet
             for element in RUNNINGTASKSETS.items():
                 u_f.write(str(element) + '\n')
@@ -134,20 +131,24 @@ def generate_possible_tasksets():
 	# filling POSSIBLETASKSETS dictionary
     if CURRENTTASKSETSIZE == 1:
         for pkg in PC.taskTypes:
-            raw_taskset = TaskSet(TASKS[pkg]) # Assign the tasks to a specific Taskset
-            POSSIBLETASKSETS[1].append(raw_taskset)
+            for task in TASKS[pkg]:
+            	raw_taskset = TaskSet([task]) # Assign the tasks to a specific Taskset
+            	POSSIBLETASKSETS[1].append(raw_taskset)
     else:
-        # Assuming we have already filled them
-
         for i in range(len(TASKSETS[1])):
-            j = i # To avoid duplicate tasks
-            for j in range(len(TASKSETS[CURRENTTASKSETSIZE - 1])):
-                current_single_element = TASKSETS[1][i]
-                current_multi_element = TASKSETS[CURRENTTASKSETSIZE - 1][j]
-                combined_raw_taskset = current_single_element + current_multi_element
-                POSSIBLETASKSETS[CURRENTTASKSETSIZE].append(copy.deepcopy(combined_raw_taskset))
-
-
+        	limiter = 0
+        	if CURRENTTASKSETSIZE == 2
+        		limiter = i + 1
+            for j in range(limiter, len(TASKSETS[CURRENTTASKSETSIZE - 1])):
+                current_single_element = copy.deepcopy(TASKSETS[1][i])
+                current_multi_element = copy.deepcopy(TASKSETS[CURRENTTASKSETSIZE - 1][j])
+                raw_task_list = []
+                for task in current_multi_element:
+                	raw_task_list.append(task)
+                for task in current_single_element:
+                	raw_task_list.append(task)
+                POSSIBLETASKSETS[CURRENTTASKSETSIZE].append(TaskSet(raw_task_list))
+    
 
 def add_job(distributor, numberOfTasksets=1, tasksetSize=1):
     # adds a new job of length numberOfTasksets to the distributor and add the monitors list (triple) to MONITORLISTS
@@ -222,6 +223,7 @@ def main(initialExecution=True):
         # FIRST TIME EXECUTION:
         #	- generate tasks outside and just read from file, on command filling the TASKS dict (load initial state)
         read_tasks()
+        generate_possible_tasksets()
     else:
         # RESUME EXECUTION:
         # 	- load potential previous findings into attributes (load state)
@@ -239,7 +241,8 @@ def main(initialExecution=True):
     # always generate PC.maxAllowedNumberOfMachnes tasksets, s.t. the machines don't have to wait
     # have at least two jobs in the queue for continous execution
     add_job(distributor=distributor, numberOfTasksets=PC.maxAllowedNumberOfMachnes, tasksetSize=CURRENTTASKSETSIZE)
-    # add triple to MONITORLISTS after adding a new job
+    add_job(distributor=distributor, numberOfTasksets=PC.maxAllowedNumberOfMachnes, tasksetSize=CURRENTTASKSETSIZE)
+    
     # creating a signal for alarm - will be called upton alarm
     signal(SIGALRM, lambda x, y: 1 / 0)
     # have output to explain controll options
@@ -250,7 +253,7 @@ def main(initialExecution=True):
         # main programm loop
         # wait for input:
         try:
-            alarm(30)  # argument should be a variable
+            alarm(10)  # argument should be a variable
             option = input()
         except ZeroDivisionError:
             option = ''
@@ -288,9 +291,8 @@ def main(initialExecution=True):
         if len(RUNNINGTASKSETS[CURRENTTASKSETSIZE]) < PC.maxAllowedNumberOfMachnes * 2:
     		add_job(distributor=distributor, numberOfTasksets=PC.maxAllowedNumberOfMachnes, tasksetSize=CURRENTTASKSETSIZE)
     # end of while
-
-        # when finished save all data to textfile or pickle it to a file adjust read_tasks and read_tasksets accoringly
-        # including TASKS, BADTASKS, TASKSETS, BADTASKSETS
+    print('finished execution')
+    write_tasksets_to_file(includeUnfinishedTasksets=False)
 
 
 if __name__ == '__main__':

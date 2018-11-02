@@ -1,7 +1,7 @@
 import logging
 # these are parameters to configure the distributor
 availableSessions = ['QemuSession','PandaSession']
-sessionType = availableSessions[0]
+sessionType = availableSessions[1]
 
 numberOfMachinesToStartWith = 1
 maxAllowedNumberOfMachnes = 1
