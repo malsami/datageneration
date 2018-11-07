@@ -244,7 +244,19 @@ def currentTasksetSizeExhauseted():
 
 
 def show_status():
-    #TODO show stats
+
+    print("Current Level: ", CURRENTTASKSETSIZE, "\n")
+    print("Number of GOOD current level tasksets[", CURRENTTASKSETSIZE, "]: ", len(TASKSETS[CURRENTTASKSETSIZE]), "\n")
+    for i in range(CURRENTTASKSETSIZE - 1, 0):
+        print("Number of GOOD Tasksets at level ", i, ": ", len(TASKSETS[i]))
+
+    print("Number of Running Tasksets: ", len(RUNNINGTASKSETS), "\n")
+
+    for pkg in TASKS:
+        if len(TASKS[pkg]) != 0:
+            print("Number of tasks in TASKS[", pkg, "]: ", len(TASKS[pkg]))
+
+
     try:
         print('you can increase the current level (i)')
         if CURRENTTASKSETSIZE == 1:
