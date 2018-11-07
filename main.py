@@ -56,6 +56,8 @@ MONITORLISTS = []
 # list of taskset hashes
 POSSIBLETASKSETS = []
 
+SAVE_POSSIBLES = {  1 : []
+                }
 # list of TaskSet objects
 RUNNINGTASKSETS = []
 
@@ -251,7 +253,9 @@ def show_status():
         option = input()
         alarm(0)
         if option == 'i':
-            #TODO increase current lvl MAYBE BY ENFORCING WAIT (only RUNNINGTASKSETS will be finished)
+            print('RUNNINGTASKSETS will be finished and then the level wil be raised.')
+            SAVE_POSSIBLES[CURRENTTASKSETSIZE] = POSSIBLETASKSETS
+            POSSIBLETASKSETS = []
             return
         if CURRENTTASKSETSIZE == 1 and option in PC.taskTypes:
             if option in PC.taskTypes:
