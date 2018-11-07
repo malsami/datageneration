@@ -7,17 +7,17 @@ from taskgen.taskset import TaskSet
 availableSessions = ['QemuSession','PandaSession']
 sessionType = availableSessions[0]
 
-numberOfMachinesToStartWith = 1
-maxAllowedNumberOfMachines = 1
+numberOfMachinesToStartWith = 3
+maxAllowedNumberOfMachines = 3
 loggingLevel = logging.DEBUG
 delayAfterStartOfGenode = 30
 timesTasksetIsTriedBeforeLabeldBad = 2
 genodeTimeout = 30
 
 
-taskTypes = ['hey'] # to use all available task types use the following list instead:['hey', 'pi', 'tumatmul', 'cond_mod', 'cond_42']
+taskTypes = ['pi'] # to use all available task types use the following list instead:['hey', 'pi', 'tumatmul', 'cond_mod', 'cond_42']
 
-tasksPerLine = 10 # number of tasks put in one list
+tasksPerLine = 5 # number of tasks put in one list
 linesPerCall = 2 # lines per file written in one execution
 
 taskParameters = {	'PKG':
@@ -34,8 +34,8 @@ taskParameters = {	'PKG':
 						'cond_mod':(25,30),#130-3000
 						'cond_42':(2,4)
 						},
-				'PRIORITY': (1,127), # think we can put constraint on this and just provide maybe 5 different values, so values appear more often and in the end with fp scheduling only the difference should matter(?)
-				'PERIOD': (1,8),
+				'PRIORITY': (1,5),#127), # think we can put constraint on this and just provide maybe 5 different values, so values appear more often and in the end with fp scheduling only the difference should matter(?)
+				'PERIOD': (1,2),#8),
 				'OFFSET': (0,1),
 				'NUMBEROFJOBS': (1,1),#(1,10),
 				'QUOTA': (100, 100), #(1, 100),# we could just assign arbitrary big values to this and to caps as well, cause a working task, which is the assumption for an initial taskset, would have good values for that and both (caps and ram) are available in abundance 

@@ -21,18 +21,10 @@ FINISHED = False
 
 # good (successful) tasksets, key represents the size of the taskset
 # list elements are tuples: (bool, TaskSet)
-TASKSETS = {1: [],
-            2: [],
-            3: [],
-            4: [],
-            5: []
+TASKSETS = {1: []
             }
 
-BADTASKSETS = {1: [],
-               2: [],
-               3: [],
-               4: [],
-               5: []
+BADTASKSETS = {1: []
                }
 
 #list elements are task hashes
@@ -84,7 +76,7 @@ def load_tasks(packages=PC.taskTypes, addToPossible=False):
     if addToPossible:
         shuffle(POSSIBLETASKSETS)
 
-    print('lines loaded:',TASKSLINES)
+    print('lines loaded:',[(t,TASKSLINES[t]) for t in PC.taskTypes])
     #print(TASKS)
 
 
@@ -155,8 +147,8 @@ def generate_possible_tasksets():
             if CURRENTTASKSETSIZE == 2:
                 limiter = i + 1
             for j in range(limiter, len(TASKSETS[CURRENTTASKSETSIZE - 1])):
-                current_single_element = PC.get_taskset_hash(TASKSETS[1][i])
-                current_multi_element = PC.get_taskset_hash(TASKSETS[CURRENTTASKSETSIZE - 1][j])
+                current_single_element = PC.get_taskset_hash(TASKSETS[1][i][1])
+                current_multi_element = PC.get_taskset_hash(TASKSETS[CURRENTTASKSETSIZE - 1][j][1])
                 POSSIBLETASKSETS.append(current_single_element+current_multi_element)
     shuffle(POSSIBLETASKSETS)
 
@@ -232,11 +224,22 @@ def currentTasksetSizeExhauseted():
     global CURRENTTASKSETSIZE
     global RUNNING
     global WAITING
+    global FINISHED
     RUNNING = not HALT and RUNNINGTASKSETS
     WAITING = not POSSIBLETASKSETS and RUNNING 
     if not POSSIBLETASKSETS and not RUNNINGTASKSETS:
         RUNNING = True
         CURRENTTASKSETSIZE += 1
+        try:
+            if TASKSETS[CURRENTTASKSETSIZE]:
+                pass
+        except Exception as e:
+            TASKSETS[CURRENTTASKSETSIZE] = []
+        try:
+            if BADTASKSETS[CURRENTTASKSETSIZE]:
+                pass
+        except Exception as e:
+            BADTASKSETS[CURRENTTASKSETSIZE] = []
         generate_possible_tasksets()
         if not POSSIBLETASKSETS:
             FINISHED = True
@@ -244,17 +247,18 @@ def currentTasksetSizeExhauseted():
 
 
 def show_status():
+    global POSSIBLETASKSETS
 
     print("Current Level: ", CURRENTTASKSETSIZE, "\n")
-    print("Number of GOOD current level tasksets[", CURRENTTASKSETSIZE, "]: ", len(TASKSETS[CURRENTTASKSETSIZE]), "\n")
-    for i in range(CURRENTTASKSETSIZE - 1, 0):
-        print("Number of GOOD Tasksets at level ", i, ": ", len(TASKSETS[i]))
+    print("Number of [GOOD/TOTAL] tasksets on the {}. level: [{}/{}]".format(CURRENTTASKSETSIZE, len(TASKSETS[CURRENTTASKSETSIZE]), len(TASKSETS[CURRENTTASKSETSIZE])+len(BADTASKSETS[CURRENTTASKSETSIZE])))
+    for i in range(CURRENTTASKSETSIZE - 1, 0, -1):
+        print("Number of [GOOD/TOTAL] tasksets on the {}. level: [{}/{}]".format(i, len(TASKSETS[i]), len(TASKSETS[i])+len(BADTASKSETS[i])))
 
-    print("Number of Running Tasksets: ", len(RUNNINGTASKSETS), "\n")
+    print("Number of Running Tasksets: ", len(RUNNINGTASKSETS))
+    print("Number of possible Tasksets on current level:", len(POSSIBLETASKSETS))
 
-    for pkg in TASKS:
-        if len(TASKS[pkg]) != 0:
-            print("Number of tasks in TASKS[", pkg, "]: ", len(TASKS[pkg]))
+    for pkg in PC.taskTypes:
+        print("Number of tasks in TASKS[", pkg, "]: ", len(TASKS[pkg]))
 
 
     try:
