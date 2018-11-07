@@ -8,6 +8,7 @@ import value_init as VI
 from taskgen.task import Task
 from taskgen.taskset import TaskSet
 from random import shuffle
+import threading
 import parameter_config as PC
 
 # this needs to be filled with generated tasks
@@ -41,6 +42,12 @@ TASKS = {'hey': [],
          'cond_mod': [],
          'cond_42': []
          }
+TASKSLINES = {  'hey' : 0,
+                'pi': 0,
+                'tumatmul': 0,
+                'cond_mod': 0,
+                'cond_42': 0
+            }
 
 # holds triples as list [numberOfTasksInJob, numberOfProcessedTasksInJob, [Taskset]]
 # tasksetTries=0 if successful; Job=[startTime, exitTime, eventType]
@@ -53,15 +60,30 @@ POSSIBLETASKSETS = []
 RUNNINGTASKSETS = []
 
 
-def load_tasks(path='./data_new_tasks_'):
+def load_tasks(packages=PC.taskTypes, addToPossible=False):
     # read from file provided in 'path' for each pkg in PC.taskTypes and load into TASKS
     # format per line in file e.g.: [task_hash, task_hash, ...]
     global TASKS
-
-    for package in PC.taskTypes:
-        with open(path + package) as task_file:
+    global POSSIBLETASKSETS
+    linecounter = 0
+    path='./data_new_tasks_'
+    for pkg in packages:
+        with open(path + pkg) as task_file:
             for line in task_file:  # Every line is a list of tasks in this file
-                TASKS[package] += eval(line)
+                if addToPossible and linecounter < TASKSLINES[pkg]:
+                    linecounter += 1
+                else:
+                    linecounter += 1
+                    TASKSLINES[pkg] += 1
+                    newTasks = eval(line)
+                    TASKS[pkg] += newTasks
+                    if addToPossible:
+                        POSSIBLETASKSETS += newTasks
+    if addToPossible:
+        shuffle(POSSIBLETASKSETS)
+
+    print('lines loaded:',TASKSLINES)
+    #print(TASKS)
 
 
 def load_tasksets(include_possibilities=True):
@@ -99,6 +121,7 @@ def load_tasksets(include_possibilities=True):
 
 
 def write_tasksets_to_file(save_possibilities=False):# should only be True if execution aborts
+    global POSSIBLETASKSETS
     with open("./data_bad_tasksets", "w") as bad_f:# each line is (int, [ (bool,[{}]) ] )
         # Writing bad taskset into the file
         for element in BADTASKSETS.items():
@@ -150,14 +173,16 @@ def add_job(distributor, numberOfTasksets=1, tasksetSize=1):
         try:
             taskset = POSSIBLETASKSETS.pop()
             if CURRENTTASKSETSIZE == 1:
+                # print(taskset,'\n',TASKS)
                 TASKS[PC.taskParameters['PKG'][int(taskset[:1])]].remove(taskset)
             tasksetList.append(PC.hash_to_taskset(taskset))
             # add them also to RUNNINGTASKSETS
             RUNNINGTASKSETS.append(tasksetList[-1])
         except IndexError:
             break
-    distributor.add_job(tasksetList, monitor=monitor, is_list=True)
-    MONITORLISTS.append([len(tasksetList), 0, monitor.out])
+    if tasksetList:
+        distributor.add_job(tasksetList, monitor=monitor, is_list=True)
+        MONITORLISTS.append([len(tasksetList), 0, monitor.out])
 
 
 def check_monitors():
@@ -219,7 +244,9 @@ def currentTasksetSizeExhauseted():
 def show_status():
     #TODO show stats
     try:
-        print('you can increase the current level (i) or if you are still on level 1 you can add more tasks for a pkg, just type name of one of these: {}'.format(PC.taskTypes))
+        print('you can increase the current level (i)')
+        if CURRENTTASKSETSIZE == 1:
+            print('you can also add more tasks for a pkg, just type the name of one of these: {}'.format(PC.taskTypes))
         alarm(10)
         option = input()
         alarm(0)
@@ -227,16 +254,9 @@ def show_status():
             #TODO increase current lvl MAYBE BY ENFORCING WAIT (only RUNNINGTASKSETS will be finished)
             return
         if CURRENTTASKSETSIZE == 1 and option in PC.taskTypes:
-            if option == 'hey':
-                pass
-            elif option == 'pi':
-                pass
-            elif option == 'tumatmul':
-                pass
-            elif option == 'cond_42':
-                pass
-            elif option == 'cond_mod':
-                pass
+            if option in PC.taskTypes:
+                PC.make_tasks(option)
+                load_tasks(packages=[option], addToPossible=True)
     except ZeroDivisionError:
         pass
     return
@@ -265,7 +285,10 @@ def halt_machines(distributor, hard=False):
             distributor._jobs = [] #DANGER - this was not intended, but i think here we should have the option to - Robert
             # move tasksets from RUNNINGTASKSETS to POSSIBLETASKSETS
             for taskset in RUNNINGTASKSETS:
-                POSSIBLETASKSETS.append(PC.get_taskset_hash(taskset))
+                tasksetHash = PC.get_taskset_hash(taskset)
+                if CURRENTTASKSETSIZE == 1:
+                    TASKS[PC.taskParameters['PKG'][int(tasksetHash[:1])]].append(tasksetHash)
+                POSSIBLETASKSETS.append(tasksetHash)
             RUNNINGTASKSETS = []
             # clear MONITORLISTS
             MONITORLISTS = []
@@ -331,7 +354,7 @@ def main(initialExecution=True):
     # creating a signal for alarm - will be called upton alarm
     signal(SIGALRM, lambda x, y: 1 / 0)
     # have output to explain controll options
-    inputMessage = 'THIS IS THE TEXT THAT IS SHOWN EACH TIME AN ACTION CAN BE PERFORMED.'
+    inputMessage = 'options are (d)ebug, show status(ss), (h)alt/(k)ill machines, (r)esume machines, (s)ave current progress, e(x)it.'
     print(inputMessage)
     option = ''
     while not FINISHED:
@@ -350,14 +373,14 @@ def main(initialExecution=True):
             # print('offer to read more lines from according file')
             print(inputMessage)
         elif option == 'h':
-            halt(distributor) # hard=False
+            halt_machines(distributor) # hard=False
             print(inputMessage)
         elif option =='k':
             # kill all machines
-            halt(distributor, hard=True)
+            halt_machines(distributor, hard=True)
             print(inputMessage)
         elif option == 'r':
-            resume()# execution
+            resume(distributor)# execution
             print(inputMessage)
         elif option == 's':
             # saving current progress (TASKSETS, BADTASKSETS)
@@ -370,12 +393,15 @@ def main(initialExecution=True):
             write_tasksets_to_file(save_possibilities=True)
             if PC.sessionType == 'QemuSession':
                 clean_function(PC.maxAllowedNumberOfMachines)
+                sys.exit(0)
+        elif option == 'd':
+            print('\n\n\n\nTasksets:\n',TASKSETS,'\n\n\nBadTasksets:\n',BADTASKSETS,'\n\n\nRunningTasksets:\n', RUNNINGTASKSETS,'\n\n\nMonitorLists:\n',MONITORLISTS,'\n')
+            print(inputMessage)
         elif option == '':
-            pass
+            print('lap...') #pass
         else:
             print(option, 'was not a possible option!')
             print(inputMessage)
-        print('\n\n\n\n\n',TASKSETS,'\n\n\n\n',BADTASKSETS,'\n\n\n\n', RUNNINGTASKSETS,'\n\n\n\n',MONITORLISTS)
         # unrelated to user input:
         check_monitors()  # check if a taskset is finished and put it into according attribute
         currentTasksetSizeExhauseted()  # increments CURRENTTASKSETSIZE if current size is exhausted

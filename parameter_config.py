@@ -10,15 +10,15 @@ sessionType = availableSessions[0]
 numberOfMachinesToStartWith = 1
 maxAllowedNumberOfMachines = 1
 loggingLevel = logging.DEBUG
-delayAfterStartOfGenode = 60
+delayAfterStartOfGenode = 30
 timesTasksetIsTriedBeforeLabeldBad = 2
 genodeTimeout = 30
 
 
 taskTypes = ['hey'] # to use all available task types use the following list instead:['hey', 'pi', 'tumatmul', 'cond_mod', 'cond_42']
 
-tasksPerLine = 100 # number of tasks put in one list
-linesPerCall = 6 # lines per file written in one execution
+tasksPerLine = 10 # number of tasks put in one list
+linesPerCall = 2 # lines per file written in one execution
 
 taskParameters = {	'PKG':
 						{1:'hey',
@@ -48,7 +48,8 @@ PKGTOINT = {'hey' : 1,
 			'cond_mod' : 4,
 			'cond_42' : 5
 			}
-HASH_LENGTH_PER_TASK = 31
+
+HASH_LENGTH_PER_TASK = 52
 
 def get_taskset_size(hash_value):
 	return len(hash_value)/HASH_LENGTH_PER_TASK
@@ -64,31 +65,44 @@ def get_task_hash(task):
 	# returns a string containing 31 digits per task
 	hash_value = ''
 	hash_value += str(PKGTOINT[task['pkg']])
-	hash_value += str(task['config']['arg1']).zfill(2)
-	hash_value += str(task['priority']).zfill(3)
+	hash_value += str(task['priority']).zfill(3) #fine
+	hash_value += str(task['deadline']).zfill(5)
 	hash_value += str(task['period']).zfill(5)
-	hash_value += str(task['offset']).zfill(5)
-	hash_value += str(task['numberofjobs']).zfill(3)
-	hash_value += task['quota'][:-1].zfill(4)
-	hash_value += str(task['caps']).zfill(3)
 	hash_value += str(task['criticaltime']).zfill(5)
+	hash_value += str(task['numberofjobs']).zfill(3)
+	hash_value += str(task['offset']).zfill(5)
+	hash_value += task['quota'][:-1].zfill(3)
+	hash_value += str(task['caps']).zfill(3)
+	hash_value += str(task['cores']).zfill(2)
+	hash_value += str(task['coreoffset']).zfill(2)
+	hash_value += str(task['config']['arg1']).zfill(15)# todo, can be much bigger
+	
 	return hash_value
 
 
 def hash_to_taskset(hash_value):
 	taskset = TaskSet([])
-	for i in range(int(len(hash_value)/31)):
-		hash_offset = i*31
+	for i in range(int(len(hash_value)/HASH_LENGTH_PER_TASK)):
+		hash_offset = i*HASH_LENGTH_PER_TASK
 		pkg = taskParameters['PKG'][int(hash_value[hash_offset : hash_offset +1])]
-		arg = int(hash_value[hash_offset +1:hash_offset +3])
-		priority = int(hash_value[hash_offset +3:hash_offset +6])
-		period = int(hash_value[hash_offset +6:hash_offset +11])
-		offset = int(hash_value[hash_offset +11:hash_offset +16])
-		numberofjobs = int(hash_value[hash_offset +16:hash_offset +19])
-		quota = int(hash_value[hash_offset +19:hash_offset +23])
-		caps = int(hash_value[hash_offset +23:hash_offset +26])
-		criticaltime = int(hash_value[hash_offset +26:hash_offset +31])
-		# print('Task {}:\npkg: {},\narg: {},\npriority: {},\nperiod: {},\noffset: {},\nnumberofjobs: {},\nquota: {},\ncaps:{}'.format(i,pkg,arg,priority,period,offset,numberofjobs,quota,caps))
-		taskset.append(VI.create_task(s_pkg='pkg', s_arg1=arg, s_criticaltime=criticaltime, s_numberofjobs=numberofjobs, s_offset=offset, s_period=period, s_priority=priority, s_quota=quota, s_caps=caps))
+		priority = int(hash_value[hash_offset +1:hash_offset +4])
+		deadline = int(hash_value[hash_offset +4:hash_offset +9])
+		period = int(hash_value[hash_offset +9:hash_offset +14])
+		criticaltime = int(hash_value[hash_offset +14:hash_offset +19])
+		numberofjobs = int(hash_value[hash_offset +19:hash_offset +22])
+		offset = int(hash_value[hash_offset +22:hash_offset +27])
+		quota = int(hash_value[hash_offset +27:hash_offset +30])
+		caps = int(hash_value[hash_offset +30:hash_offset +33])
+		cores = int(hash_value[hash_offset +33:hash_offset +35])
+		coreoffset = int(hash_value[hash_offset +35:hash_offset +37])
+		arg = int(hash_value[hash_offset +37:hash_offset +52])
+		taskset.append(VI.create_task(input_pkg=pkg, input_priority=priority, input_deadline=deadline, input_period=period, input_criticaltime=criticaltime, input_numberofjobs=numberofjobs, input_offset=offset, input_quota=quota, input_caps=caps, input_cores=cores, input_coreoffset=coreoffset, input_arg1=arg))
 	return taskset
 
+
+def make_tasks(pkg):
+	tasks = ''
+	for i in range(linesPerCall):
+		tasks += str([get_task_hash(task) for task in VI.generate_tasks_of_type(tasksPerLine, pkg, taskParameters)[pkg]])+'\n'
+	with open('./data_new_tasks_'+pkg, 'a') as file:
+		file.write(tasks)

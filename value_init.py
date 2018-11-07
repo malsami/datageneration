@@ -35,17 +35,20 @@ def verify_list_of_tasks(task_list):
     return True
 
 
-def create_task(s_pkg='hey', s_arg1=0, s_criticaltime=0, s_numberofjobs=1, s_offset=0, s_period=1000, s_priority=126, s_quota=10, s_caps=50):
-    p_pkg = {"pkg" : s_pkg}
-    p_arg1 = {"config" : {"arg1" : s_arg1}}
-    p_priority = priority.Value(s_priority)
-    p_period = period.Value(s_period)
-    p_criticaltime = criticaltime.Value(s_criticaltime)
-    p_offset = {'offset' : s_offset}
-    p_numberofjobs = {'numberofjobs' : s_numberofjobs}
-    p_quota = {'quota' : str(s_quota)+'M'}
-    p_caps = {'caps': s_caps}
-    return Task(p_pkg, p_arg1, p_period, p_priority, p_criticaltime, p_offset, p_numberofjobs, p_quota, p_caps) 
+def create_task(input_pkg='hey', input_priority=1, input_deadline=0, input_period=1000, input_criticaltime=0, input_numberofjobs=1, input_offset=0, input_quota=10, input_caps=50, input_cores=2, input_coreoffset=1, input_arg1=0):
+    dict_pkg = {"pkg" : input_pkg}
+    dict_priority = {'priority' : input_priority}
+    dict_deadline = {'deadline' : input_deadline}
+    dict_period = {'period' : input_period}
+    dict_criticaltime = {'criticaltime' : input_criticaltime}
+    dict_numberofjobs = {'numberofjobs' : input_numberofjobs}
+    dict_offset = {'offset' : input_offset}
+    dict_quota = {'quota' : str(input_quota)+'M'}
+    dict_caps = {'caps': input_caps}
+    dict_cores = {'cores' : input_cores}
+    dict_coreoffset = {'coreoffset' : input_coreoffset}
+    dict_arg1 = {"config" : {"arg1" : input_arg1}}
+    return Task(dict_pkg, dict_priority, dict_deadline, dict_period, dict_criticaltime, dict_numberofjobs, dict_offset, dict_quota, dict_caps, dict_cores, dict_coreoffset, dict_arg1)
 
 
 def plot_distribution(x,y,titel, ylable, xlable,info=False):
@@ -86,17 +89,18 @@ def generate_tasks(n, parameters):
             }
     for i in range(n):
         i_pkg = parameters['PKG'][random_value((1,5))]
-
-        i_arg = random_value(parameters['ARG'][i_pkg])
         i_priority = random_value(parameters['PRIORITY'])
+        i_deadline = 0
         i_period = random_value(parameters['PERIOD'])*1000
         i_criticaltime = CRITICALTIME(i_period)
-        i_offset = random_value(parameters['OFFSET'])*1000
         i_numberofjobs = random_value(parameters['NUMBEROFJOBS'])
+        i_offset = random_value(parameters['OFFSET'])*1000
         i_quota = random_value(parameters['QUOTA'])
         i_caps = random_value(parameters['CAPS'])
-        tasks[i_pkg].append(create_task(i_pkg, i_arg, i_criticaltime, i_numberofjobs, i_offset, i_period, i_priority, i_quota, i_caps))
-    
+        i_cores = 2
+        i_coreoffset = 1
+        i_arg = random_value(parameters['ARG'][i_pkg])
+        tasks[i_pkg].append(create_task(input_pkg=i_pkg, input_priority=i_priority, input_deadline=i_deadline, input_period=i_period, input_criticaltime=i_criticaltime, input_numberofjobs=i_numberofjobs, input_offset=i_offset, input_quota=i_quota, input_caps=i_caps, input_cores=i_cores, input_coreoffset=i_coreoffset, input_arg1=i_arg))
     return tasks
 
 def generate_tasks_of_type(n, pkg, parameters):
@@ -104,16 +108,18 @@ def generate_tasks_of_type(n, pkg, parameters):
     tasks = []
     for i in range(n):
         i_pkg = pkg 
-        i_arg = base_for_pkg(i_pkg) ** random_value(parameters['ARG'][i_pkg])
         i_priority = random_value(parameters['PRIORITY'])
+        i_deadline = 0
         i_period = random_value(parameters['PERIOD'])*1000
         i_criticaltime = CRITICALTIME(i_period)
-        i_offset = random_value(parameters['OFFSET'])*1000
         i_numberofjobs = random_value(parameters['NUMBEROFJOBS'])
+        i_offset = random_value(parameters['OFFSET'])*1000
         i_quota = random_value(parameters['QUOTA'])
         i_caps = random_value(parameters['CAPS'])
-        tasks.append(create_task(i_pkg, i_arg, i_criticaltime, i_numberofjobs, i_offset, i_period, i_priority, i_quota, i_caps))
-
+        i_cores = 2
+        i_coreoffset = 1
+        i_arg = base_for_pkg(i_pkg) ** random_value(parameters['ARG'][i_pkg])
+        tasks.append(create_task(input_pkg=i_pkg, input_priority=i_priority, input_deadline=i_deadline, input_period=i_period, input_criticaltime=i_criticaltime, input_numberofjobs=i_numberofjobs, input_offset=i_offset, input_quota=i_quota, input_caps=i_caps, input_cores=i_cores, input_coreoffset=i_coreoffset, input_arg1=i_arg))
     return {pkg:tasks}
 
 if __name__ == '__main__':
