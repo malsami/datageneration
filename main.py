@@ -14,6 +14,7 @@ import parameter_config as PC
 # this needs to be filled with generated tasks
 
 CURRENTTASKSETSIZE = 1
+newLevel = -1
 HALT = False
 RUNNING = True
 WAITING = False
@@ -76,6 +77,7 @@ def load_tasks(packages=PC.taskTypes, addToPossible=False):
                     if addToPossible:
                         POSSIBLETASKSETS += newTasks
     if addToPossible:
+        remove_known_tasksets_from_possible()
         shuffle(POSSIBLETASKSETS)
     print('lines loaded:',[(t,TASKSLINES[t]) for t in PC.taskTypes])
 
@@ -102,10 +104,12 @@ def load_tasksets(include_possibilities=True):
                     else:
                         BADTASKSETS[level].append((successful,taskset))
     if include_possibilities:
-        with open('./data_possible_tasksets','r') as taskset_file:
-            for line in taskset_file:# format: [taskset_hash], taskset_hash is type string
-                POSSIBLETASKSETS += eval(line)
-
+        try:
+            with open('./data_possible_tasksets','r') as taskset_file:
+                for line in taskset_file:# format: [taskset_hash], taskset_hash is type string
+                    POSSIBLETASKSETS += eval(line)
+        except FileNotFoundError as e:
+            print('There were no possible tasksets.')
 
 """
     write_tasksets_to_file() is for basic book-keeping and we will write the good,bad and possible tasksets into the appropriate
@@ -130,8 +134,9 @@ def write_tasksets_to_file(save_possibilities=False):# should only be True if ex
 """ Build the taskset list. 
     When building the taskset of size n, it will combine the taskset of size n-1 with the tasksets of 1
 """
-def generate_possible_tasksets():
+def generate_possible_tasksets(resuming=False):
     global POSSIBLETASKSETS
+    print(CURRENTTASKSETSIZE, 'in generate possible tasksets')
     # filling POSSIBLETASKSETS dictionary
     if CURRENTTASKSETSIZE == 1:
         for pkg in PC.taskTypes:
@@ -143,7 +148,24 @@ def generate_possible_tasksets():
                 current_single_element = PC.get_taskset_hash(TASKSETS[1][i][1])
                 current_multi_element = PC.get_taskset_hash(TASKSETS[CURRENTTASKSETSIZE - 1][j][1])
                 POSSIBLETASKSETS.append(current_single_element+current_multi_element)
+    remove_known_tasksets_from_possible()
     shuffle(POSSIBLETASKSETS)
+
+
+def remove_known_tasksets_from_possible():
+    global POSSIBLETASKSETS
+    if CURRENTTASKSETSIZE in TASKSETS and TASKSETS[CURRENTTASKSETSIZE]:
+        for success, taskset in TASKSETS[CURRENTTASKSETSIZE]:
+            try:
+                POSSIBLETASKSETS.remove(PC.get_taskset_hash(taskset))
+            except ValueError as e:
+                pass
+    if CURRENTTASKSETSIZE in BADTASKSETS and BADTASKSETS[CURRENTTASKSETSIZE]:
+        for success, taskset in BADTASKSETS[CURRENTTASKSETSIZE]:
+            try:
+                POSSIBLETASKSETS.remove(PC.get_taskset_hash(taskset))
+            except ValueError as e:
+                pass
 
 
 def add_job(distributor, numberOfTasksets=1, tasksetSize=1):
@@ -231,19 +253,24 @@ def currentTasksetSizeExhauseted():
     global RUNNING
     global WAITING
     global FINISHED
+    global newLevel
     RUNNING = not HALT and RUNNINGTASKSETS
     WAITING = not POSSIBLETASKSETS and RUNNING 
     if not POSSIBLETASKSETS and not RUNNINGTASKSETS:
-        RUNNING = True
-        CURRENTTASKSETSIZE += 1
+        if newLevel > 0:
+            CURRENTTASKSETSIZE = newLevel
+            newLevel = -1
+        else:
+            CURRENTTASKSETSIZE += 1
         add_if_not_exists(CURRENTTASKSETSIZE)
         generate_possible_tasksets()
-        if not POSSIBLETASKSETS:
+        if not POSSIBLETASKSETS and not TASKSETS[CURRENTTASKSETSIZE]:
             FINISHED = True
 
 
 def show_status():
     global POSSIBLETASKSETS
+    global newLevel
 
     print("Current Level: ", CURRENTTASKSETSIZE, "\n")
     print("Number of [GOOD/TOTAL] tasksets on the {}. level: [{}/{}]".format(CURRENTTASKSETSIZE, len(TASKSETS[CURRENTTASKSETSIZE]), len(TASKSETS[CURRENTTASKSETSIZE])+len(BADTASKSETS[CURRENTTASKSETSIZE])))
@@ -256,13 +283,14 @@ def show_status():
 
     try:
         print('you can increase the current level (i)')
+        print('or you can set the level to one of these values: {}'.format(list(TASKSETS.keys())))
         if CURRENTTASKSETSIZE == 1:
             print('you can also add more tasks for a pkg, just type the name of one of these: {}'.format(PC.taskTypes))
         alarm(10)
         option = input()
         alarm(0)
         if option == 'i':
-            print('RUNNINGTASKSETS will be finished and then the level wil be raised.')
+            print('RUNNINGTASKSETS will be finished and then the level will be raised.')
             SAVE_POSSIBLES[CURRENTTASKSETSIZE] = POSSIBLETASKSETS
             POSSIBLETASKSETS = []
             return
@@ -270,6 +298,17 @@ def show_status():
             if option in PC.taskTypes:
                 PC.make_tasks(option)
                 load_tasks(packages=[option], addToPossible=True)
+        try:
+            intOption = int(option)
+            if intOption in TASKSETS:
+                newLevel = intOption
+                print('RUNNINGTASKSETS will be finished and then the level will be set to {}.'.format(intOption))
+                SAVE_POSSIBLES[CURRENTTASKSETSIZE] = POSSIBLETASKSETS
+                POSSIBLETASKSETS = []
+                return
+            print('That ({}) was not a viable option.'.format(intOption))
+        except ValueError:
+            print('That ({}) was not a viable option.'.format(option))
     except ZeroDivisionError:
         pass
     return
@@ -351,14 +390,14 @@ def main(initialExecution=True):
         if POSSIBLETASKSETS:
             CURRENTTASKSETSIZE = PC.get_taskset_size(POSSIBLETASKSETS[0])
         else:
-            # throw away highest level of TASKSETS
-            # set CURRENTTASKSETSIZE to this level
+            # set CURRENTTASKSETSIZE to highest level with data
             max_key = 0
             for key,itemList in TASKSETS.items():
-                if not itemList:
+                print(key, len(itemList))
+                if itemList:
                     max_key = max(max_key, key)
-            TASKSETS[max_key] = []
             CURRENTTASKSETSIZE = max_key
+            #print(TASKSETS)
             generate_possible_tasksets()
 
     # HAPPENS EVERY TIME
