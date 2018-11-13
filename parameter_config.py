@@ -5,12 +5,12 @@ import value_init as VI
 from taskgen.taskset import TaskSet
 # these are parameters to configure the distributor
 availableSessions = ['QemuSession','PandaSession']
-sessionType = availableSessions[0]
+sessionType = availableSessions[1]
 
 numberOfMachinesToStartWith = 3
 maxAllowedNumberOfMachines = 3
 loggingLevel = logging.DEBUG
-delayAfterStartOfGenode = 30
+delayAfterStartOfGenode = 60
 timesTasksetIsTriedBeforeLabeldBad = 2
 genodeTimeout = 30
 
@@ -52,7 +52,7 @@ PKGTOINT = {'hey' : 1,
 HASH_LENGTH_PER_TASK = 52
 
 def get_taskset_size(hash_value):
-	return len(hash_value)/HASH_LENGTH_PER_TASK
+	return int(len(hash_value)/HASH_LENGTH_PER_TASK)
 
 def get_taskset_hash(taskset):
 	# returns a string containing 31 digits per task

@@ -55,15 +55,17 @@ RUNNINGTASKSETS = []
 
 
 def load_tasks(packages=PC.taskTypes, addToPossible=False):
-    # read from file provided in 'path' for each pkg in PC.taskTypes and load into TASKS
+    # read from package specific file and load into TASKS
     # format per line in file e.g.: [task_hash, task_hash, ...]
     global TASKS
     global POSSIBLETASKSETS
-    linecounter = 0
+    global TASKSLINES
+
+    linecounter = 0 # keeps track of read lines
     path='./data_new_tasks_'
     for pkg in packages:
         with open(path + pkg) as task_file:
-            for line in task_file:  # Every line is a list of tasks in this file
+            for line in task_file:
                 if addToPossible and linecounter < TASKSLINES[pkg]:
                     linecounter += 1
                 else:
@@ -75,23 +77,22 @@ def load_tasks(packages=PC.taskTypes, addToPossible=False):
                         POSSIBLETASKSETS += newTasks
     if addToPossible:
         shuffle(POSSIBLETASKSETS)
-
     print('lines loaded:',[(t,TASKSLINES[t]) for t in PC.taskTypes])
-    #print(TASKS)
 
 
 def load_tasksets(include_possibilities=True):
-    # read from file provided in 'path' and load into TASKS and BADTASKS above
-    # possible format as string would be a tuple per line e.g.: (1, [Taskset, Taskset, ...])
-
-    # Write the tasksets to the file in the format above before reading
-
+    # read from files and load into TASKSETS and BADTASKSETS above
+    # format: a tuple per line: (level, [Taskset, Taskset, ...])
+    # include_possibilities decides whether or not POSSIBLETASKSETS should be restored 
     global TASKSETS
     global BADTASKSETS
+    global POSSIBLETASKSETS
+
     for option in ('good', 'bad'):
         with open('./data_{}_tasksets'.format(option), 'r') as taskset_file:
-            for line in tasket_file:# line format: (int, [ (bool,[{}]) ] )
+            for line in taskset_file:# line format: (int, [ (bool,[{}]) ] )
                 level, tasksetList = eval(line)# level indicates size of tasksets
+                add_if_not_exists(level)
                 for successful, tasksetInfo in tasksetList:
                     taskset = TaskSet([])
                     for taskDict in tasksetInfo:
@@ -101,19 +102,15 @@ def load_tasksets(include_possibilities=True):
                     else:
                         BADTASKSETS[level].append((successful,taskset))
     if include_possibilities:
-        global POSSIBLETASKSETS
         with open('./data_possible_tasksets','r') as taskset_file:
             for line in taskset_file:# format: [taskset_hash], taskset_hash is type string
                 POSSIBLETASKSETS += eval(line)
 
 
-
 """
-    This function is for basic book-keeping and we will write the good,bad,and unevaluated tasksets into the appropriate
+    write_tasksets_to_file() is for basic book-keeping and we will write the good,bad and possible tasksets into the appropriate
     files. 
 """
-
-
 def write_tasksets_to_file(save_possibilities=False):# should only be True if execution aborts
     global POSSIBLETASKSETS
     with open("./data_bad_tasksets", "w") as bad_f:# each line is (int, [ (bool,[{}]) ] )
@@ -133,8 +130,6 @@ def write_tasksets_to_file(save_possibilities=False):# should only be True if ex
 """ Build the taskset list. 
     When building the taskset of size n, it will combine the taskset of size n-1 with the tasksets of 1
 """
-
-
 def generate_possible_tasksets():
     global POSSIBLETASKSETS
     # filling POSSIBLETASKSETS dictionary
@@ -143,9 +138,7 @@ def generate_possible_tasksets():
             POSSIBLETASKSETS += TASKS[pkg]
     else:
         for i in range(len(TASKSETS[1])):
-            limiter = 0
-            if CURRENTTASKSETSIZE == 2:
-                limiter = i + 1
+            limiter = i + 1 if CURRENTTASKSETSIZE == 2 else 0 
             for j in range(limiter, len(TASKSETS[CURRENTTASKSETSIZE - 1])):
                 current_single_element = PC.get_taskset_hash(TASKSETS[1][i][1])
                 current_multi_element = PC.get_taskset_hash(TASKSETS[CURRENTTASKSETSIZE - 1][j][1])
@@ -159,6 +152,10 @@ def add_job(distributor, numberOfTasksets=1, tasksetSize=1):
     # the list is numberOfTasksets long and each Taskset consists of tasksetSize Tasks
     # otherwise, a new taskset is to be generated in its place
     # the outputlist of DataGenerationMonitor can be accessed via its 'out' attribute
+    global MONITORLISTS
+    global POSSIBLETASKSETS
+    global TASKS
+    global RUNNINGTASKSETS
 
     monitor = DataGenerationMonitor([])
     tasksetList = []
@@ -219,6 +216,15 @@ def evaluate_taskset(taskset):
     RUNNINGTASKSETS.remove(taskset)
 
 
+def add_if_not_exists(level):
+    global TASKSETS
+    global BADTASKSETS
+    if not level in TASKSETS:
+        TASKSETS[level] = []
+    if not level in BADTASKSETS:
+        BADTASKSETS[level] = []
+
+
 def currentTasksetSizeExhauseted():
     global POSSIBLETASKSETS
     global CURRENTTASKSETSIZE
@@ -230,20 +236,10 @@ def currentTasksetSizeExhauseted():
     if not POSSIBLETASKSETS and not RUNNINGTASKSETS:
         RUNNING = True
         CURRENTTASKSETSIZE += 1
-        try:
-            if TASKSETS[CURRENTTASKSETSIZE]:
-                pass
-        except Exception as e:
-            TASKSETS[CURRENTTASKSETSIZE] = []
-        try:
-            if BADTASKSETS[CURRENTTASKSETSIZE]:
-                pass
-        except Exception as e:
-            BADTASKSETS[CURRENTTASKSETSIZE] = []
+        add_if_not_exists(CURRENTTASKSETSIZE)
         generate_possible_tasksets()
         if not POSSIBLETASKSETS:
             FINISHED = True
-
 
 
 def show_status():
@@ -253,13 +249,10 @@ def show_status():
     print("Number of [GOOD/TOTAL] tasksets on the {}. level: [{}/{}]".format(CURRENTTASKSETSIZE, len(TASKSETS[CURRENTTASKSETSIZE]), len(TASKSETS[CURRENTTASKSETSIZE])+len(BADTASKSETS[CURRENTTASKSETSIZE])))
     for i in range(CURRENTTASKSETSIZE - 1, 0, -1):
         print("Number of [GOOD/TOTAL] tasksets on the {}. level: [{}/{}]".format(i, len(TASKSETS[i]), len(TASKSETS[i])+len(BADTASKSETS[i])))
-
     print("Number of Running Tasksets: ", len(RUNNINGTASKSETS))
     print("Number of possible Tasksets on current level:", len(POSSIBLETASKSETS))
-
     for pkg in PC.taskTypes:
         print("Number of tasks in TASKS[", pkg, "]: ", len(TASKS[pkg]))
-
 
     try:
         print('you can increase the current level (i)')
@@ -287,6 +280,7 @@ def halt_machines(distributor, hard=False):
     global RUNNINGTASKSETS
     global POSSIBLETASKSETS
     global MONITORLISTS
+    global TASKS
     HALT = True
     if hard:
         distributor.kill_all_machines()
@@ -321,6 +315,7 @@ def halt_machines(distributor, hard=False):
 
 
 def resume(distributor):
+    global HALT
     if not RUNNINGTASKSETS:
         add_job(distributor=distributor, numberOfTasksets=PC.maxAllowedNumberOfMachines, tasksetSize=CURRENTTASKSETSIZE)
         add_job(distributor=distributor, numberOfTasksets=PC.maxAllowedNumberOfMachines, tasksetSize=CURRENTTASKSETSIZE)
@@ -328,12 +323,14 @@ def resume(distributor):
         distributor.resume()
     HALT = False
 
+
 def main(initialExecution=True):
     global CURRENTTASKSETSIZE
     global RUNNINGTASKSETS
     global TASKSETS
     global BADTASKSETS
     global MONITORLISTS
+    print()
     # initialize distributor on target plattform
     distributor = Distributor(max_machine=PC.numberOfMachinesToStartWith, session_type=PC.sessionType,
                               max_allowed=PC.maxAllowedNumberOfMachines, logging_level=PC.loggingLevel,
@@ -413,7 +410,7 @@ def main(initialExecution=True):
             write_tasksets_to_file(save_possibilities=True)
             if PC.sessionType == 'QemuSession':
                 clean_function(PC.maxAllowedNumberOfMachines)
-                sys.exit(0)
+            sys.exit(0)
         elif option == 'd':
             print('\n\n\n\nTasksets:\n',TASKSETS,'\n\n\nBadTasksets:\n',BADTASKSETS,'\n\n\nRunningTasksets:\n', RUNNINGTASKSETS,'\n\n\nMonitorLists:\n',MONITORLISTS,'\n')
             print(inputMessage)
@@ -435,7 +432,12 @@ def main(initialExecution=True):
 
 if __name__ == '__main__':
     try:
-        main()
+        initialize = True
+        try:
+            initialize = not (sys.argv[1] == 'c')
+        except IndexError as e:
+            pass
+        main(initialExecution=initialize)
     except KeyboardInterrupt:
         print('\nInterrupted')
         if PC.sessionType == 'QemuSession':
