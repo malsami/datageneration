@@ -3,7 +3,7 @@ sys.path.append('../')
 from signal import signal, alarm, SIGALRM
 from distributor_service.distributor import Distributor
 from distributor_service.monitors.dataGenerationMonitor import DataGenerationMonitor
-from distributor_service.clean import clean_function
+from distributor_service.clean import clean_function, clean_panda
 import value_init as VI
 from taskgen.task import Task
 from taskgen.taskset import TaskSet
@@ -363,6 +363,13 @@ def resume(distributor):
     HALT = False
 
 
+def clean_up_machines():
+    if PC.sessionType == 'QemuSession':
+        clean_function(PC.maxAllowedNumberOfMachines)
+    if PC.sessionType == 'PandaSession':
+        clean_panda(PC.maxAllowedNumberOfMachines)
+
+
 def main(initialExecution=True):
     global CURRENTTASKSETSIZE
     global RUNNINGTASKSETS
@@ -447,14 +454,14 @@ def main(initialExecution=True):
             distributor.kill_all_machines()
             MONITORLISTS = []
             write_tasksets_to_file(save_possibilities=True)
-            if PC.sessionType == 'QemuSession':
-                clean_function(PC.maxAllowedNumberOfMachines)
+            clean_up_machines()
             sys.exit(0)
         elif option == 'd':
             print('\n\n\n\nTasksets:\n',TASKSETS,'\n\n\nBadTasksets:\n',BADTASKSETS,'\n\n\nRunningTasksets:\n', RUNNINGTASKSETS,'\n\n\nMonitorLists:\n',MONITORLISTS,'\n')
             print(inputMessage)
         elif option == '':
-            print('lap...') #pass
+            # print('lap...') 
+            pass
         else:
             print(option, 'was not a possible option!')
             print(inputMessage)
@@ -479,7 +486,6 @@ if __name__ == '__main__':
         main(initialExecution=initialize)
     except KeyboardInterrupt:
         print('\nInterrupted')
-        if PC.sessionType == 'QemuSession':
-            clean_function(PC.maxAllowedNumberOfMachines)
+        clean_up_machines()
         # logger.error('##################################################')
         sys.exit(0)
