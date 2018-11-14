@@ -17,7 +17,7 @@ def combine_random(task_dict, number_of_wanted_sets, tasks_per_set,input_paramet
     for i in range(number_of_wanted_sets):
         t = TaskSet([])
         for s in range(tasks_per_set):
-            pkg_list = task_dict[input_parameter['PKG'][random_value((1,5))]]
+            pkg_list = task_dict[input_parameter['PKG'][random_value((1,len(input_parameter['PKG'])))]]
             t.append(copy.deepcopy(pkg_list[random_value((0,len(pkg_list)-1))]))
         if verify_list_of_tasks(t):
             resulting_list.append(t)
@@ -69,7 +69,7 @@ def random_value(scope):
 
 def CRITICALTIME(period):
 	stoptime = 500
-	return period - stoptime
+	return max(period - stoptime,0)
 
 
 def base_for_pkg(pkg):
@@ -88,7 +88,7 @@ def generate_tasks(n, parameters):
             'cond_42':[]
             }
     for i in range(n):
-        i_pkg = parameters['PKG'][random_value((1,5))]
+        i_pkg = parameters['PKG'][random_value((1,len(parameters['PKG'])))]
         i_priority = random_value(parameters['PRIORITY'])
         i_deadline = 0
         i_period = random_value(parameters['PERIOD'])*1000

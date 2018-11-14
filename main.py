@@ -63,11 +63,11 @@ def load_tasks(packages=PC.taskTypes, addToPossible=False):
     global TASKSLINES
 
     linecounter = 0 # keeps track of read lines
-    path='./data_new_tasks_'
+    path='./data/new_tasks_'
     for pkg in packages:
         with open(path + pkg) as task_file:
             for line in task_file:
-                if addToPossible and linecounter < TASKSLINES[pkg]:
+                if linecounter < TASKSLINES[pkg]:
                     linecounter += 1
                 else:
                     linecounter += 1
@@ -91,7 +91,7 @@ def load_tasksets(include_possibilities=True):
     global POSSIBLETASKSETS
 
     for option in ('good', 'bad'):
-        with open('./data_{}_tasksets'.format(option), 'r') as taskset_file:
+        with open('./data/{}_tasksets'.format(option), 'r') as taskset_file:
             for line in taskset_file:# line format: (int, [ (bool,[{}]) ] )
                 level, tasksetList = eval(line)# level indicates size of tasksets
                 add_if_not_exists(level)
@@ -105,7 +105,7 @@ def load_tasksets(include_possibilities=True):
                         BADTASKSETS[level].append((successful,taskset))
     if include_possibilities:
         try:
-            with open('./data_possible_tasksets','r') as taskset_file:
+            with open('./data/possible_tasksets','r') as taskset_file:
                 for line in taskset_file:# format: [taskset_hash], taskset_hash is type string
                     POSSIBLETASKSETS += eval(line)
         except FileNotFoundError as e:
@@ -115,17 +115,17 @@ def load_tasksets(include_possibilities=True):
     write_tasksets_to_file() is for basic book-keeping and we will write the good,bad and possible tasksets into the appropriate
     files. 
 """
-def write_tasksets_to_file(save_possibilities=False):# should only be True if execution aborts
+def write_tasksets_to_file(save_possibilities=False, fileversion=''):# should only be True if execution aborts
     global POSSIBLETASKSETS
-    with open("./data_bad_tasksets", "w") as bad_f:# each line is (int, [ (bool,[{}]) ] )
+    with open("./data/bad_tasksets"+fileversion, "w") as bad_f:# each line is (int, [ (bool,[{}]) ] )
         # Writing bad taskset into the file
         for element in BADTASKSETS.items():
             bad_f.write(str(element) + '\n')
-    with open("./data_good_tasksets", "w") as good_f:# each line is (int, [ (bool,[{}]) ] )
+    with open("./data/good_tasksets"+fileversion, "w") as good_f:# each line is (int, [ (bool,[{}]) ] )
         for element in TASKSETS.items():
             good_f.write(str(element) + '\n')
     if save_possibilities:
-        with open("./data_possible_tasksets", "w") as possible_f: # each line is [taskset_hash], taskset_hash is a string
+        with open("./data/possible_tasksets", "w") as possible_f: # each line is [taskset_hash], taskset_hash is a string
             # Writing the tasksets which have not been evaluated yet beack into possibilities and then save
             POSSIBLETASKSETS += [PC.get_taskset_hash(taskset) for taskset in RUNNINGTASKSETS]
             possible_f.write(str(POSSIBLETASKSETS) + '\n')
@@ -158,12 +158,16 @@ def remove_known_tasksets_from_possible():
         for success, taskset in TASKSETS[CURRENTTASKSETSIZE]:
             try:
                 POSSIBLETASKSETS.remove(PC.get_taskset_hash(taskset))
+                if CURRENTTASKSETSIZE == 1:
+                    TASKS[taskset[0]['pkg']].remove(PC.get_taskset_hash(taskset))
             except ValueError as e:
                 pass
     if CURRENTTASKSETSIZE in BADTASKSETS and BADTASKSETS[CURRENTTASKSETSIZE]:
         for success, taskset in BADTASKSETS[CURRENTTASKSETSIZE]:
             try:
                 POSSIBLETASKSETS.remove(PC.get_taskset_hash(taskset))
+                if CURRENTTASKSETSIZE == 1:
+                    TASKS[taskset[0]['pkg']].remove(PC.get_taskset_hash(taskset))
             except ValueError as e:
                 pass
 
@@ -272,9 +276,9 @@ def show_status():
     global POSSIBLETASKSETS
     global newLevel
 
-    print("Current Level: ", CURRENTTASKSETSIZE, "\n")
-    print("Number of [GOOD/TOTAL] tasksets on the {}. level: [{}/{}]".format(CURRENTTASKSETSIZE, len(TASKSETS[CURRENTTASKSETSIZE]), len(TASKSETS[CURRENTTASKSETSIZE])+len(BADTASKSETS[CURRENTTASKSETSIZE])))
-    for i in range(CURRENTTASKSETSIZE - 1, 0, -1):
+    print("Current Level: ", CURRENTTASKSETSIZE)
+    #print("Number of [GOOD/TOTAL] tasksets on the {}. level: [{}/{}]".format(CURRENTTASKSETSIZE, len(TASKSETS[CURRENTTASKSETSIZE]), len(TASKSETS[CURRENTTASKSETSIZE])+len(BADTASKSETS[CURRENTTASKSETSIZE])))
+    for i in list(TASKSETS.keys())[::-1]:
         print("Number of [GOOD/TOTAL] tasksets on the {}. level: [{}/{}]".format(i, len(TASKSETS[i]), len(TASKSETS[i])+len(BADTASKSETS[i])))
     print("Number of Running Tasksets: ", len(RUNNINGTASKSETS))
     print("Number of possible Tasksets on current level:", len(POSSIBLETASKSETS))
@@ -298,17 +302,32 @@ def show_status():
             if option in PC.taskTypes:
                 PC.make_tasks(option)
                 load_tasks(packages=[option], addToPossible=True)
-        try:
-            intOption = int(option)
-            if intOption in TASKSETS:
-                newLevel = intOption
-                print('RUNNINGTASKSETS will be finished and then the level will be set to {}.'.format(intOption))
-                SAVE_POSSIBLES[CURRENTTASKSETSIZE] = POSSIBLETASKSETS
-                POSSIBLETASKSETS = []
-                return
-            print('That ({}) was not a viable option.'.format(intOption))
-        except ValueError:
-            print('That ({}) was not a viable option.'.format(option))
+        else:
+            try:
+                intOption = int(option)
+                if intOption in TASKSETS:
+                    # print(intOption,type(intOption),[x for k,l in TASKS.items() for x in l],'\n', TASKS)
+                    if intOption == 1 and not [x for k,l in TASKS.items() for x in l]: 
+                        try:
+                            print('There is no unexecuted Tasks, do you want to add more of everything? [y/n]')
+                            alarm(5)
+                            option = input()
+                            alarm(0)
+                            if option == 'y':
+                                for task in PC.taskTypes:
+                                    PC.make_tasks(task)
+                                    load_tasks(packages=[task], addToPossible=False)
+                        except ZeroDivisionError:
+                            pass
+                    newLevel = intOption
+                    print('RUNNINGTASKSETS will be finished and then the level will be set to {}.'.format(intOption))
+                    SAVE_POSSIBLES[CURRENTTASKSETSIZE] = POSSIBLETASKSETS
+                    POSSIBLETASKSETS = []
+                    return
+                else:
+                    print('{} was not a viable option.'.format(intOption))
+            except ValueError:
+                print('{} was not a viable option.'.format(option))
     except ZeroDivisionError:
         pass
     return
@@ -376,7 +395,8 @@ def main(initialExecution=True):
     global TASKSETS
     global BADTASKSETS
     global MONITORLISTS
-    print()
+    lapCounter = 0
+    timesSaved = 0
     # initialize distributor on target plattform
     distributor = Distributor(max_machine=PC.numberOfMachinesToStartWith, session_type=PC.sessionType,
                               max_allowed=PC.maxAllowedNumberOfMachines, logging_level=PC.loggingLevel,
@@ -421,6 +441,11 @@ def main(initialExecution=True):
     print(inputMessage)
     option = ''
     while not FINISHED:
+        lapCounter += 1
+        if lapCounter > PC.savedEveryNLaps:
+            lapCounter = 0
+            timesSaved += 1
+            write_tasksets_to_file(fileversion=str(timesSaved))
         # main programm loop
         # wait for input:
         try:
