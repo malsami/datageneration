@@ -1,153 +1,175 @@
 import sys
-
 sys.path.append('../')
 from signal import signal, alarm, SIGALRM
 from distributor_service.distributor import Distributor
 from distributor_service.monitors.dataGenerationMonitor import DataGenerationMonitor
-from distributor_service.clean import clean_function
+from distributor_service.clean import clean_function, clean_panda
 import value_init as VI
 from taskgen.task import Task
 from taskgen.taskset import TaskSet
-import copy
+from random import shuffle
+import threading
 import parameter_config as PC
 
 # this needs to be filled with generated tasks
+
+CURRENTTASKSETSIZE = 1
+newLevel = -1
+HALT = False
+RUNNING = True
+WAITING = False
+FINISHED = False
+
+# good (successful) tasksets, key represents the size of the taskset
+# list elements are tuples: (bool, TaskSet)
+TASKSETS = {1: []
+            }
+
+BADTASKSETS = {1: []
+               }
+
+#list elements are task hashes
 TASKS = {'hey': [],
          'pi': [],
          'tumatmul': [],
          'cond_mod': [],
          'cond_42': []
          }
-
-RUNNINGTASKSETS = {1: [],
-                   2: [],
-                   3: [],
-                   4: [],
-                   5: []
-                   }
-
-CURRENTTASKSETSIZE = 1
-RUNNING = True
-
-# good (successful) tasksets, key represents the size of the taskset
-TASKSETS = {1: [],
-            2: [],
-            3: [],
-            4: [],
-            5: []
+TASKSLINES = {  'hey' : 0,
+                'pi': 0,
+                'tumatmul': 0,
+                'cond_mod': 0,
+                'cond_42': 0
             }
 
-BADTASKSETS = {1: [],
-               2: [],
-               3: [],
-               4: [],
-               5: []
-               }
-
 # holds triples as list [numberOfTasksInJob, numberOfProcessedTasksInJob, [Taskset]]
-# tasksetTries=0 if successful; Job=(startTime, exitTime, eventType)
+# tasksetTries=0 if successful; Job=[startTime, exitTime, eventType]
 MONITORLISTS = []
 
-POSSIBLETASKSETS = {1: [],
-                    2: [],
-                    3: [],
-                    4: [],
-                    5: []
-                    }
+# list of taskset hashes
+POSSIBLETASKSETS = []
+
+SAVE_POSSIBLES = {  1 : []
+                }
+# list of TaskSet objects
+RUNNINGTASKSETS = []
 
 
-def read_tasks(path='./data_new_tasks_'):
-    # read from file provided in 'path' and load into TASKS and BADTASKS above
-    # possible format as string would be a tuple per line e.g.: ('hey', [Task, Task, ...])
+def load_tasks(packages=PC.taskTypes, addToPossible=False):
+    # read from package specific file and load into TASKS
+    # format per line in file e.g.: [task_hash, task_hash, ...]
     global TASKS
+    global POSSIBLETASKSETS
+    global TASKSLINES
 
-    for package in PC.taskTypes:
-        with open(path + package) as task_file:
-            for line in task_file:  # Every line is a list of tasks in this file
-                task_list = eval(line)
+    linecounter = 0 # keeps track of read lines
+    path='./data/new_tasks_'
+    for pkg in packages:
+        with open(path + pkg) as task_file:
+            for line in task_file:
+                if linecounter < TASKSLINES[pkg]:
+                    linecounter += 1
+                else:
+                    linecounter += 1
+                    TASKSLINES[pkg] += 1
+                    newTasks = eval(line)
+                    TASKS[pkg] += newTasks
+                    if addToPossible:
+                        POSSIBLETASKSETS += newTasks
+    if addToPossible:
+        remove_known_tasksets_from_possible()
+        shuffle(POSSIBLETASKSETS)
+    print('lines loaded:',[(t,TASKSLINES[t]) for t in PC.taskTypes])
 
-                for taskString in range(len(task_list)):
-                    task = Task(task_list[taskString])  # for readability
-                    TASKS[package].append(task)
 
-
-def read_tasksets(path="./unevaluated_taskset", resume_running_taskset=True):
-    # read from file provided in 'path' and load into TASKS and BADTASKS above
-    # possible format as string would be a tuple per line e.g.: (1, [Taskset, Taskset, ...])
-
-    # Write the tasksets to the file in the format above before reading
-
+def load_tasksets(include_possibilities=True):
+    # read from files and load into TASKSETS and BADTASKSETS above
+    # format: a tuple per line: (level, [Taskset, Taskset, ...])
+    # include_possibilities decides whether or not POSSIBLETASKSETS should be restored 
     global TASKSETS
     global BADTASKSETS
-    global RUNNINGTASKSETS
+    global POSSIBLETASKSETS
 
-    for package in PC.taskTypes:
-        with open(path) as tasket_file:
-            for line in tasket_file:
-                taskset_object = eval(line)
-                size = taskset_object[0]
-                taskset = taskset_object[1]
-
-                # Whether we want to pick up where we were last writing or we want to read the marked files
-                if resume_running_taskset:
-                    RUNNINGTASKSETS[size].append(taskset)
-                else:
-                    if evaluate_taskset(taskset):
-                        TASKSETS[size].append(taskset)
+    for option in ('good', 'bad'):
+        with open('./data/{}_tasksets'.format(option), 'r') as taskset_file:
+            for line in taskset_file:# line format: (int, [ (bool,[{}]) ] )
+                level, tasksetList = eval(line)# level indicates size of tasksets
+                add_if_not_exists(level)
+                for successful, tasksetInfo in tasksetList:
+                    taskset = TaskSet([])
+                    for taskDict in tasksetInfo:
+                        taskset.append(Task(taskDict))
+                    if successful:
+                        TASKSETS[level].append((successful,taskset))
                     else:
-                        BADTASKSETS[size].append(taskset)
-
+                        BADTASKSETS[level].append((successful,taskset))
+    if include_possibilities:
+        try:
+            with open('./data/possible_tasksets','r') as taskset_file:
+                for line in taskset_file:# format: [taskset_hash], taskset_hash is type string
+                    POSSIBLETASKSETS += eval(line)
+        except FileNotFoundError as e:
+            print('There were no possible tasksets.')
 
 """
-    This function is for basic book-keeping and we will write the good,bad,and unevaluated tasksets into the appropriate
+    write_tasksets_to_file() is for basic book-keeping and we will write the good,bad and possible tasksets into the appropriate
     files. 
 """
-
-
-def write_tasksets_to_file(includeUnfinishedTasksets=True):
-    with open("./data_bad_taskset", "w") as bad_f:
+def write_tasksets_to_file(save_possibilities=False, fileversion=''):# should only be True if execution aborts
+    global POSSIBLETASKSETS
+    with open("./data/bad_tasksets"+fileversion, "w") as bad_f:# each line is (int, [ (bool,[{}]) ] )
         # Writing bad taskset into the file
         for element in BADTASKSETS.items():
             bad_f.write(str(element) + '\n')
-    with open("./data_good_taskset", "w") as good_f: # Writing good taskset into the file
+    with open("./data/good_tasksets"+fileversion, "w") as good_f:# each line is (int, [ (bool,[{}]) ] )
         for element in TASKSETS.items():
             good_f.write(str(element) + '\n')
-    if includeUnfinishedTasksets:
-        with open("./unevaluated_taskset", "w") as unfinished_f:
-            # Writing the tasksets which have not been evaluated yet
-            for element in RUNNINGTASKSETS.items():
-                unfinished_f.write(str(element) + '\n')
+    if save_possibilities:
+        with open("./data/possible_tasksets", "w") as possible_f: # each line is [taskset_hash], taskset_hash is a string
+            # Writing the tasksets which have not been evaluated yet beack into possibilities and then save
+            POSSIBLETASKSETS += [PC.get_taskset_hash(taskset) for taskset in RUNNINGTASKSETS]
+            possible_f.write(str(POSSIBLETASKSETS) + '\n')
+                
 
 """ Build the taskset list. 
     When building the taskset of size n, it will combine the taskset of size n-1 with the tasksets of 1
 """
-
-
-def generate_possible_tasksets():
+def generate_possible_tasksets(resuming=False):
+    global POSSIBLETASKSETS
+    print(CURRENTTASKSETSIZE, 'in generate possible tasksets')
     # filling POSSIBLETASKSETS dictionary
     if CURRENTTASKSETSIZE == 1:
         for pkg in PC.taskTypes:
-            for task in TASKS[pkg]:
-                #print(type(task))
-                taskset = TaskSet([]) # Assign the tasks to a specific Taskset
-                #print(type(taskset))
-                taskset.append(task)
-                #print(type(taskset), taskset)
-                POSSIBLETASKSETS[1].append(taskset)
+            POSSIBLETASKSETS += TASKS[pkg]
     else:
         for i in range(len(TASKSETS[1])):
-            limiter = 0
-            if CURRENTTASKSETSIZE == 2:
-                limiter = i + 1
+            limiter = i + 1 if CURRENTTASKSETSIZE == 2 else 0 
             for j in range(limiter, len(TASKSETS[CURRENTTASKSETSIZE - 1])):
-                current_single_element = copy.deepcopy(TASKSETS[1][i])
-                current_multi_element = copy.deepcopy(TASKSETS[CURRENTTASKSETSIZE - 1][j])
-                raw_task_list = []
-                for task in current_multi_element:
-                    raw_task_list.append(task)
-                for task in current_single_element:
-                    raw_task_list.append(task)
-                POSSIBLETASKSETS[CURRENTTASKSETSIZE].append(TaskSet(raw_task_list))
+                current_single_element = PC.get_taskset_hash(TASKSETS[1][i][1])
+                current_multi_element = PC.get_taskset_hash(TASKSETS[CURRENTTASKSETSIZE - 1][j][1])
+                POSSIBLETASKSETS.append(current_single_element+current_multi_element)
+    remove_known_tasksets_from_possible()
+    shuffle(POSSIBLETASKSETS)
+
+
+def remove_known_tasksets_from_possible():
+    global POSSIBLETASKSETS
+    if CURRENTTASKSETSIZE in TASKSETS and TASKSETS[CURRENTTASKSETSIZE]:
+        for success, taskset in TASKSETS[CURRENTTASKSETSIZE]:
+            try:
+                POSSIBLETASKSETS.remove(PC.get_taskset_hash(taskset))
+                if CURRENTTASKSETSIZE == 1:
+                    TASKS[taskset[0]['pkg']].remove(PC.get_taskset_hash(taskset))
+            except ValueError as e:
+                pass
+    if CURRENTTASKSETSIZE in BADTASKSETS and BADTASKSETS[CURRENTTASKSETSIZE]:
+        for success, taskset in BADTASKSETS[CURRENTTASKSETSIZE]:
+            try:
+                POSSIBLETASKSETS.remove(PC.get_taskset_hash(taskset))
+                if CURRENTTASKSETSIZE == 1:
+                    TASKS[taskset[0]['pkg']].remove(PC.get_taskset_hash(taskset))
+            except ValueError as e:
+                pass
 
 
 def add_job(distributor, numberOfTasksets=1, tasksetSize=1):
@@ -156,23 +178,31 @@ def add_job(distributor, numberOfTasksets=1, tasksetSize=1):
     # the list is numberOfTasksets long and each Taskset consists of tasksetSize Tasks
     # otherwise, a new taskset is to be generated in its place
     # the outputlist of DataGenerationMonitor can be accessed via its 'out' attribute
+    global MONITORLISTS
+    global POSSIBLETASKSETS
+    global TASKS
+    global RUNNINGTASKSETS
 
     monitor = DataGenerationMonitor([])
     tasksetList = []
     # take numberOfTasksets Tasksets from POSSIBLETASKSETS and add them to tasksetList
-    for i in range(numberOfTasksets):
+    for i in range(numberOfTasksets*6):
         try:
-            tasksetList.append(POSSIBLETASKSETS[tasksetSize].pop())
+            taskset = POSSIBLETASKSETS.pop()
+            if CURRENTTASKSETSIZE == 1:
+                # print(taskset,'\n',TASKS)
+                TASKS[PC.taskParameters['PKG'][int(taskset[:1])]].remove(taskset)
+            tasksetList.append(PC.hash_to_taskset(taskset))
             # add them also to RUNNINGTASKSETS
-            RUNNINGTASKSETS[tasksetSize].append(tasksetList[-1])
+            RUNNINGTASKSETS.append(tasksetList[-1])
         except IndexError:
             break
-    distributor.add_job(tasksetList, monitor=monitor, is_list=True)
-    MONITORLISTS.append([len(tasksetList), 0, monitor.out])
+    if tasksetList:
+        distributor.add_job(tasksetList, monitor=monitor, is_list=True)
+        MONITORLISTS.append([len(tasksetList), 0, monitor.out])
 
 
 def check_monitors():
-    # this processes the MONITORLISTS
     global MONITORLISTS
     indicesToBeRemoved = []
     for index in range(len(MONITORLISTS)):
@@ -198,7 +228,7 @@ def evaluate_taskset(taskset):
     global BADTASKSETS
     global RUNNINGTASKSETS
     # This will evaluate the provided taskset and sort it into the according attribute
-    print('eval method')
+    #print('eval method')
     successful = True
     tasksetSize = 0
     for task in taskset:
@@ -206,21 +236,157 @@ def evaluate_taskset(taskset):
         for _, job in task['jobs'].items():
             successful = successful and job[2] == 'EXIT'
     if successful:
-        TASKSETS[tasksetSize].append(taskset)
+        TASKSETS[tasksetSize].append((successful, taskset))
     else:
-        BADTASKSETS[tasksetSize].append(taskset)
-    RUNNINGTASKSETS[tasksetSize].remove(taskset)
+        BADTASKSETS[tasksetSize].append((successful, taskset))
+    RUNNINGTASKSETS.remove(taskset)
+
+
+def add_if_not_exists(level):
+    global TASKSETS
+    global BADTASKSETS
+    if not level in TASKSETS:
+        TASKSETS[level] = []
+    if not level in BADTASKSETS:
+        BADTASKSETS[level] = []
 
 
 def currentTasksetSizeExhauseted():
     global POSSIBLETASKSETS
     global CURRENTTASKSETSIZE
     global RUNNING
-    if not POSSIBLETASKSETS[CURRENTTASKSETSIZE]:
-        CURRENTTASKSETSIZE += 1
+    global WAITING
+    global FINISHED
+    global newLevel
+    RUNNING = not HALT and RUNNINGTASKSETS
+    WAITING = not POSSIBLETASKSETS and RUNNING 
+    if not POSSIBLETASKSETS and not RUNNINGTASKSETS:
+        if newLevel > 0:
+            CURRENTTASKSETSIZE = newLevel
+            newLevel = -1
+        else:
+            CURRENTTASKSETSIZE += 1
+        add_if_not_exists(CURRENTTASKSETSIZE)
         generate_possible_tasksets()
-        if not POSSIBLETASKSETS[CURRENTTASKSETSIZE]:
-            RUNNING = False
+        if not POSSIBLETASKSETS and not TASKSETS[CURRENTTASKSETSIZE]:
+            FINISHED = True
+
+
+def show_status():
+    global POSSIBLETASKSETS
+    global newLevel
+
+    print("Current Level: ", CURRENTTASKSETSIZE)
+    #print("Number of [GOOD/TOTAL] tasksets on the {}. level: [{}/{}]".format(CURRENTTASKSETSIZE, len(TASKSETS[CURRENTTASKSETSIZE]), len(TASKSETS[CURRENTTASKSETSIZE])+len(BADTASKSETS[CURRENTTASKSETSIZE])))
+    for i in list(TASKSETS.keys())[::-1]:
+        print("Number of [GOOD/TOTAL] tasksets on the {}. level: [{}/{}]".format(i, len(TASKSETS[i]), len(TASKSETS[i])+len(BADTASKSETS[i])))
+    print("Number of Running Tasksets: ", len(RUNNINGTASKSETS))
+    print("Number of possible Tasksets on current level:", len(POSSIBLETASKSETS))
+    for pkg in PC.taskTypes:
+        print("Number of tasks in TASKS[", pkg, "]: ", len(TASKS[pkg]))
+
+    try:
+        print('you can increase the current level (i)')
+        print('or you can set the level to one of these values: {}'.format(list(TASKSETS.keys())))
+        if CURRENTTASKSETSIZE == 1:
+            print('you can also add more tasks for a pkg, just type the name of one of these: {}'.format(PC.taskTypes))
+        alarm(10)
+        option = input()
+        alarm(0)
+        if option == 'i':
+            print('RUNNINGTASKSETS will be finished and then the level will be raised.')
+            SAVE_POSSIBLES[CURRENTTASKSETSIZE] = POSSIBLETASKSETS
+            POSSIBLETASKSETS = []
+            return
+        if CURRENTTASKSETSIZE == 1 and option in PC.taskTypes:
+            if option in PC.taskTypes:
+                PC.make_tasks(option)
+                load_tasks(packages=[option], addToPossible=True)
+        else:
+            try:
+                intOption = int(option)
+                if intOption in TASKSETS:
+                    # print(intOption,type(intOption),[x for k,l in TASKS.items() for x in l],'\n', TASKS)
+                    if intOption == 1 and not [x for k,l in TASKS.items() for x in l]: 
+                        try:
+                            print('There is no unexecuted Tasks, do you want to add more of everything? [y/n]')
+                            alarm(5)
+                            option = input()
+                            alarm(0)
+                            if option == 'y':
+                                for task in PC.taskTypes:
+                                    PC.make_tasks(task)
+                                    load_tasks(packages=[task], addToPossible=False)
+                        except ZeroDivisionError:
+                            pass
+                    newLevel = intOption
+                    print('RUNNINGTASKSETS will be finished and then the level will be set to {}.'.format(intOption))
+                    SAVE_POSSIBLES[CURRENTTASKSETSIZE] = POSSIBLETASKSETS
+                    POSSIBLETASKSETS = []
+                    return
+                else:
+                    print('{} was not a viable option.'.format(intOption))
+            except ValueError:
+                print('{} was not a viable option.'.format(option))
+    except ZeroDivisionError:
+        pass
+    return
+
+
+def halt_machines(distributor, hard=False):
+    global HALT
+    global RUNNINGTASKSETS
+    global POSSIBLETASKSETS
+    global MONITORLISTS
+    global TASKS
+    HALT = True
+    if hard:
+        distributor.kill_all_machines()
+    else:
+        distributor.shut_down_all_machines()
+    # ask if current running should be cleared (clear jobQueue)
+    try:
+        print('Do you also want to clear the current RUNNINGTASKSETS?[y/n]')
+        alarm(10)
+        option = input()
+        alarm(0)
+        if option == 'y':
+            print('will clear distributor jobQueue, RUNNINGTASKSETS and MONITORLISTS...')
+            # clear distributor jobsQueue
+            distributor._jobs_list_lock = threading.Lock() #DANGER - this was not intended, but i think here we should have the option to - Robert
+            distributor._jobs = [] #DANGER - this was not intended, but i think here we should have the option to - Robert
+            # move tasksets from RUNNINGTASKSETS to POSSIBLETASKSETS
+            for taskset in RUNNINGTASKSETS:
+                tasksetHash = PC.get_taskset_hash(taskset)
+                if CURRENTTASKSETSIZE == 1:
+                    TASKS[PC.taskParameters['PKG'][int(tasksetHash[:1])]].append(tasksetHash)
+                POSSIBLETASKSETS.append(tasksetHash)
+            RUNNINGTASKSETS = []
+            # clear MONITORLISTS
+            MONITORLISTS = []
+            print('cleared')
+            return
+    except ZeroDivisionError:
+        pass
+    print('not cleared.')
+    return
+
+
+def resume(distributor):
+    global HALT
+    if not RUNNINGTASKSETS:
+        add_job(distributor=distributor, numberOfTasksets=PC.maxAllowedNumberOfMachines, tasksetSize=CURRENTTASKSETSIZE)
+        add_job(distributor=distributor, numberOfTasksets=PC.maxAllowedNumberOfMachines, tasksetSize=CURRENTTASKSETSIZE)
+    else:
+        distributor.resume()
+    HALT = False
+
+
+def clean_up_machines():
+    if PC.sessionType == 'QemuSession':
+        clean_function(PC.maxAllowedNumberOfMachines)
+    if PC.sessionType == 'PandaSession':
+        clean_panda(PC.maxAllowedNumberOfMachines)
 
 
 def main(initialExecution=True):
@@ -228,95 +394,123 @@ def main(initialExecution=True):
     global RUNNINGTASKSETS
     global TASKSETS
     global BADTASKSETS
-    # FIRST TIME and RESUME: only one of the two will be executed
+    global MONITORLISTS
+    lapCounter = 0
+    timesSaved = 0
+    # initialize distributor on target plattform
+    distributor = Distributor(max_machine=PC.numberOfMachinesToStartWith, session_type=PC.sessionType,
+                              max_allowed=PC.maxAllowedNumberOfMachines, logging_level=PC.loggingLevel,
+                              startup_delay=PC.delayAfterStartOfGenode, set_tries=PC.timesTasksetIsTriedBeforeLabeldBad,
+                              timeout=PC.genodeTimeout)
     if initialExecution:
         # FIRST TIME EXECUTION:
-        #	- generate tasks outside and just read from file, on command filling the TASKS dict (load initial state)
-        read_tasks()
+        # load tasks from file(s)
+        load_tasks()
         #print(type(TASKS['hey']))
         #print(TASKS['hey'][0:5])
-    
         generate_possible_tasksets()
         # print('HEEEEREEEE\n\n\n',type(POSSIBLETASKSETS[1][0]))
     else:
         # RESUME EXECUTION:
         # 	- load potential previous findings into attributes (load state)
-        read_tasks('providing path to previous saved data')  # provide filepath as argument
-        read_tasksets('providing path to previous saved data')  # provide filepath as argument
-        CURRENTTASKSETSIZE = 1  # derive from read data
+        load_tasksets()
+        if POSSIBLETASKSETS:
+            CURRENTTASKSETSIZE = PC.get_taskset_size(POSSIBLETASKSETS[0])
+        else:
+            # set CURRENTTASKSETSIZE to highest level with data
+            max_key = 0
+            for key,itemList in TASKSETS.items():
+                print(key, len(itemList))
+                if itemList:
+                    max_key = max(max_key, key)
+            CURRENTTASKSETSIZE = max_key
+            #print(TASKSETS)
+            generate_possible_tasksets()
 
     # HAPPENS EVERY TIME
-    # initialize distributor on target plattform
-    distributor = Distributor(max_machine=PC.numberOfMachinesToStartWith, session_type=PC.sessionType,
-                              max_allowed=PC.maxAllowedNumberOfMachnes, logging_level=PC.loggingLevel,
-                              startup_delay=PC.delayAfterStartOfGenode, set_tries=PC.timesTasksetIsTriedBeforeLabeldBad,
-                              timeout=PC.genodeTimeout)
-
-    # always generate PC.maxAllowedNumberOfMachnes tasksets, s.t. the machines don't have to wait
+    
+    # always generate PC.maxAllowedNumberOfMachines tasksets, s.t. the machines don't have to wait
     # have at least two jobs in the queue for continous execution
-    add_job(distributor=distributor, numberOfTasksets=PC.maxAllowedNumberOfMachnes, tasksetSize=CURRENTTASKSETSIZE)
-    add_job(distributor=distributor, numberOfTasksets=PC.maxAllowedNumberOfMachnes, tasksetSize=CURRENTTASKSETSIZE)
+    add_job(distributor=distributor, numberOfTasksets=PC.maxAllowedNumberOfMachines, tasksetSize=CURRENTTASKSETSIZE)
+    add_job(distributor=distributor, numberOfTasksets=PC.maxAllowedNumberOfMachines, tasksetSize=CURRENTTASKSETSIZE)
 
     # creating a signal for alarm - will be called upton alarm
     signal(SIGALRM, lambda x, y: 1 / 0)
     # have output to explain controll options
-    inputMessage = 'THIS IS THE TEXT THAT IS SHOWN EACH TIME AN ACTION CAN BE PERFORMED.'
+    inputMessage = 'options are (d)ebug, show status(ss), (h)alt/(k)ill machines, (r)esume machines, (s)ave current progress, e(x)it.'
     print(inputMessage)
     option = ''
-    while RUNNING:
+    while not FINISHED:
+        lapCounter += 1
+        if lapCounter > PC.savedEveryNLaps:
+            lapCounter = 0
+            timesSaved += 1
+            write_tasksets_to_file(fileversion=str(timesSaved))
         # main programm loop
         # wait for input:
         try:
             alarm(10)  # argument should be a variable
             option = input()
+            alarm(0)
         except ZeroDivisionError:
             option = ''
         # act depending on option provided
-        if option == 'rt':
-            # read additional tasks from file if lists in TASKS become smaller than a certain threshold (for that output the length of the tasklists on command, then make adding more available)
-            print('show current length of all tasks lists(each pkg)')
-            print('offer to read more lines from according file')
-            print(inputMessage)
-        elif option == 'cs':
-            # change(increase) the current size of the tasksets to be executed
+        if option == 'ss': # show status
+            show_status()
+            # print('show current length of all tasks lists(each pkg)')
+            # print('offer to read more lines from according file')
             print(inputMessage)
         elif option == 'h':
-            # halt the execution and shutdown machines via kill_all_machines() or shut_down_all_machines()
-            #	kill_all_machines, unlike shut_down_all_machines, does not wait untill the execution of the current taskset is finished
+            halt_machines(distributor) # hard=False
+            print(inputMessage)
+        elif option =='k':
+            # kill all machines
+            halt_machines(distributor, hard=True)
             print(inputMessage)
         elif option == 'r':
-            # resume execution of the scheduled tasksets
+            resume(distributor)# execution
             print(inputMessage)
         elif option == 's':
             # saving current progress (TASKSETS, BADTASKSETS)
-            write_tasksets_to_file(includeUnfinishedTasksets=False)
+            write_tasksets_to_file() # default is without possibletasksets
             print(inputMessage)
         elif option == 'x':
             # a clean exit that aborts execution and saves current findings and clean up if qemusession
-            pass
+            distributor.kill_all_machines()
+            MONITORLISTS = []
+            write_tasksets_to_file(save_possibilities=True)
+            clean_up_machines()
+            sys.exit(0)
+        elif option == 'd':
+            print('\n\n\n\nTasksets:\n',TASKSETS,'\n\n\nBadTasksets:\n',BADTASKSETS,'\n\n\nRunningTasksets:\n', RUNNINGTASKSETS,'\n\n\nMonitorLists:\n',MONITORLISTS,'\n')
+            print(inputMessage)
         elif option == '':
+            # print('lap...') 
             pass
         else:
             print(option, 'was not a possible option!')
             print(inputMessage)
-        print('\n\n\n\n\n',TASKSETS,'\n\n\n\n',BADTASKSETS,'\n\n\n\n', RUNNINGTASKSETS,'\n\n\n\n',MONITORLISTS)
         # unrelated to user input:
         check_monitors()  # check if a taskset is finished and put it into according attribute
         currentTasksetSizeExhauseted()  # increments CURRENTTASKSETSIZE if current size is exhausted
-        if len(RUNNINGTASKSETS[CURRENTTASKSETSIZE]) < PC.maxAllowedNumberOfMachnes * 2:
-            add_job(distributor=distributor, numberOfTasksets=PC.maxAllowedNumberOfMachnes,
+        if not WAITING and len(RUNNINGTASKSETS) < PC.maxAllowedNumberOfMachines * 6:
+            add_job(distributor=distributor, numberOfTasksets=PC.maxAllowedNumberOfMachines,
                     tasksetSize=CURRENTTASKSETSIZE)
     # end of while
     print('finished execution')
-    write_tasksets_to_file(includeUnfinishedTasksets=False)
+    write_tasksets_to_file()
 
 
 if __name__ == '__main__':
     try:
-        main()
+        initialize = True
+        try:
+            initialize = not (sys.argv[1] == 'c')
+        except IndexError as e:
+            pass
+        main(initialExecution=initialize)
     except KeyboardInterrupt:
         print('\nInterrupted')
-        if PC.sessionType == 'QemuSession':
-            clean_function(42)
+        clean_up_machines()
         # logger.error('##################################################')
         sys.exit(0)
