@@ -159,7 +159,8 @@ def remove_known_tasksets_from_possible():
             try:
                 POSSIBLETASKSETS.remove(PC.get_taskset_hash(taskset))
                 if CURRENTTASKSETSIZE == 1:
-                    TASKS[taskset[0]['pkg']].remove(PC.get_taskset_hash(taskset))
+                    for task in taskset:
+                        TASKS[task['pkg']].remove(PC.get_taskset_hash(taskset))
             except ValueError as e:
                 pass
     if CURRENTTASKSETSIZE in BADTASKSETS and BADTASKSETS[CURRENTTASKSETSIZE]:
