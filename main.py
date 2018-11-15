@@ -416,6 +416,9 @@ def main(initialExecution=True):
         load_tasksets()
         if POSSIBLETASKSETS:
             CURRENTTASKSETSIZE = PC.get_taskset_size(POSSIBLETASKSETS[0])
+            if CURRENTTASKSETSIZE == 1:
+                for taskset in POSSIBLETASKSETS:
+                    TASKS[PC.taskParameters['PKG'][int(taskset[:1])]].append(taskset)
         else:
             # set CURRENTTASKSETSIZE to highest level with data
             max_key = 0
