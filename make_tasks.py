@@ -7,5 +7,9 @@ If a file already exists it will only append to it, not overwrite it.
 FORMAT per line: [Task, Task, ...]
 """
 
+
 for pkg in PC.taskTypes:
     PC.make_tasks(pkg)
+    VI.plot_task_parameters(pkg)
+
+

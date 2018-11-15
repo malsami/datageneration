@@ -7,20 +7,20 @@ from taskgen.taskset import TaskSet
 availableSessions = ['QemuSession','PandaSession']
 
 
-numberOfMachinesToStartWith = 7
-maxAllowedNumberOfMachines = 7
+numberOfMachinesToStartWith = 9
+maxAllowedNumberOfMachines = 9
 loggingLevel = logging.DEBUG
 delayAfterStartOfGenode = 60
 timesTasksetIsTriedBeforeLabeldBad = 2
 genodeTimeout = 30
-savedEveryNLaps = 10#360
+savedEveryNLaps = 90 # times 10s, so one save every 15 min
 
 
 sessionType = availableSessions[1]
-taskTypes = ['pi'] # to use all available task types use the following list instead:['hey', 'pi', 'tumatmul', 'cond_mod', 'cond_42']
+taskTypes = ['hey', 'pi', 'tumatmul', 'cond_mod'] # to use all available task types use the following list instead:['hey', 'pi', 'tumatmul', 'cond_mod', 'cond_42']
 
-tasksPerLine = 2 # number of tasks put in one list
-linesPerCall = 2 # lines per file written in one execution
+tasksPerLine = 100 # number of tasks put in one list
+linesPerCall = 1 # lines per file written in one execution
 
 taskParameters = {	'PKG':
 						{1:'hey',
@@ -29,27 +29,46 @@ taskParameters = {	'PKG':
 						 4:'cond_mod'#,
 						 #5:'cond_42'
 						},
+				'PRIORITY': (1,5),#127), # think we can put constraint on this and just provide maybe 5 different values, so values appear more often and in the end with fp scheduling only the difference should matter(?)
+				'DEADLINE' : (0, 0),
+				'PERIOD': (1,8),
+				'CRITICALTIME' : (0, 0), # is assigned by function depending on PERIOD
+				'NUMBEROFJOBS': (1,8),#(1,10),
+				'OFFSET': (0,0),
+				'QUOTA': (100, 100), #(1, 100),# we could just assign arbitrary big values to this and to caps as well, cause a working task, which is the assumption for an initial taskset, would have good values for that and both (caps and ram) are available in abundance 
+				'CAPS': (235, 235), #(10, 235)
+				'CORES' : (0, 0),
+				'COREOFFSET' : (0, 0),
 				'ARG':
 						{'hey':(0,0),#23-28
 						'pi':(13,21),#84-1600
 						'tumatmul':(12,19),#104-2700
 						'cond_mod':(25,30)#,#130-3000
 						#'cond_42':(2,4)
-						},
-				'PRIORITY': (1,5),#127), # think we can put constraint on this and just provide maybe 5 different values, so values appear more often and in the end with fp scheduling only the difference should matter(?)
-				'PERIOD': (1,8),
-				'OFFSET': (0,0),
-				'NUMBEROFJOBS': (1,8),#(1,10),
-				'QUOTA': (100, 100), #(1, 100),# we could just assign arbitrary big values to this and to caps as well, cause a working task, which is the assumption for an initial taskset, would have good values for that and both (caps and ram) are available in abundance 
-				'CAPS': (235, 235) #(10, 235)
+						}
 				}
 
 PKGTOINT = {'hey' : 1,
 			'pi' : 2,
 			'tumatmul' : 3,
-			'cond_mod' : 4,
-			'cond_42' : 5
+			'cond_mod' : 4#,
+			#'cond_42' : 5
 			}
+
+PARAMETERINHASH = { # (start, numberOfDigits)
+					'PKG' : (0, 1),
+					'PRIORITY' : (1, 3),
+					'DEADLINE' : (4, 5),
+					'PERIOD' : (9, 5),
+					'CRITICALTIME' : (14, 5),
+					'NUMBEROFJOBS' : (19, 3),
+					'OFFSET' : (22, 5),
+					'QUOTA' : (27, 3),
+					'CAPS' : (30, 3),
+					'CORES' : (33, 2),
+					'COREOFFSET' : (35, 2),
+					'ARG' : (37, 15)
+}
 
 HASH_LENGTH_PER_TASK = 52
 

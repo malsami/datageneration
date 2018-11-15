@@ -2,10 +2,13 @@ import sys
 sys.path.append('../')
 import random
 import copy
+import math
 import matplotlib.pyplot as plt
 from taskgen.blocks import *
 from taskgen.task import Task
 from taskgen.taskset import TaskSet
+import parameter_config as PC
+
 
 
 def task_dict_to_list(task_dict,pkg):
@@ -60,7 +63,30 @@ def plot_distribution(x,y,titel, ylable, xlable,info=False):
 	if info:
 		for i in x:
 			ax.text(i,y[i-1]/2, '%d' %y[i-1], ha='center', va='bottom')
-	plt.show()
+	# plt.show()
+
+
+def plot_task_parameters(pkg):
+    taskHashes = []
+    with open('../datageneration/data/new_tasks_{}'.format(pkg),'r') as file:
+        for line in file:
+            taskHashes += eval(line)
+    #print(taskHashes)
+    counter = 0
+    for key in PC.taskParameters:
+        #print(key)
+        counter +=1
+        parameterScope = PC.taskParameters[key] if key != 'ARG' else PC.taskParameters[key][pkg]
+        if key != 'PKG' and parameterScope[0] != parameterScope[1]:
+            parameterValues = [int(taskHash[PC.PARAMETERINHASH[key][0] : sum(PC.PARAMETERINHASH[key])]) for taskHash in taskHashes]
+            if key in ('DEADLINE','PERIOD','OFFSET'):
+                parameterValues = [x/1000 for x in parameterValues]
+            if key == 'ARG':
+                parameterValues = [int(round(math.log(x, base_for_pkg(pkg)))) for x in parameterValues]
+            values = {value : parameterValues.count(value) for value in range(parameterScope[0], parameterScope[1]+1)}
+            #print(values)
+            plot_distribution(values.keys(), values.values(), '%s Distribution' % key, 'Amount', 'Value')
+    plt.show()
 
 
 def random_value(scope):
