@@ -22,7 +22,7 @@ taskTypes = ['hey', 'pi', 'tumatmul', 'cond_mod'] # to use all available task ty
 tasksPerLine = 100 # number of tasks put in one list
 linesPerCall = 1 # lines per file written in one execution
 
-taskParameters = {	'PKG':
+taskParameters = {	'PKG': # maximum possible amount of distinct tasksets is 11664
 						{1:'hey',
 						 2:'pi',
 						 3:'tumatmul',
@@ -76,14 +76,14 @@ def get_taskset_size(hash_value):
 	return int(len(hash_value)/HASH_LENGTH_PER_TASK)
 
 def get_taskset_hash(taskset):
-	# returns a string containing 31 digits per task
+	# returns a string containing 52 digits per task
 	hash_value = ''
 	for task in taskset:
 		hash_value += get_task_hash(task)
 	return hash_value
 
 def get_task_hash(task):
-	# returns a string containing 31 digits per task
+	# returns a string containing 52 digits per task
 	hash_value = ''
 	hash_value += str(PKGTOINT[task['pkg']])
 	hash_value += str(task['priority']).zfill(3) #fine

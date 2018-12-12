@@ -397,7 +397,7 @@ def main(initialExecution=True):
     global BADTASKSETS
     global MONITORLISTS
     lapCounter = 0
-    timesSaved = 0
+    aORb = True
     # initialize distributor on target plattform
     distributor = Distributor(max_machine=PC.numberOfMachinesToStartWith, session_type=PC.sessionType,
                               max_allowed=PC.maxAllowedNumberOfMachines, logging_level=PC.loggingLevel,
@@ -448,8 +448,12 @@ def main(initialExecution=True):
         lapCounter += 1
         if lapCounter > PC.savedEveryNLaps:
             lapCounter = 0
-            timesSaved += 1
-            write_tasksets_to_file(fileversion=str(timesSaved))
+            if aORb:
+                write_tasksets_to_file(fileversion='A')
+                aORb = not aORb
+            else:
+                write_tasksets_to_file(fileversion='B')
+                aORb = not aORb
         # main programm loop
         # wait for input:
         try:
