@@ -1,9 +1,9 @@
 import sys
 sys.path.append('../')
 from signal import signal, alarm, SIGALRM
-from distributor_service.distributor import Distributor
-from distributor_service.monitors.dataGenerationMonitor import DataGenerationMonitor
-from distributor_service.clean import clean_function, clean_panda
+from distributor.distributorClass import Distributor
+from distributor.monitors.dataGenerationMonitor import DataGenerationMonitor
+from distributor.clean import clean_function, clean_panda
 import value_init as VI
 from taskgen.task import Task
 from taskgen.taskset import TaskSet
