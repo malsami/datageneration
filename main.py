@@ -199,7 +199,7 @@ def add_job(distributor, numberOfTasksets=1, tasksetSize=1):
         except IndexError:
             break
     if tasksetList:
-        distributor.add_job(tasksetList, monitor=monitor, is_list=True)
+        distributor.add_job(tasksetList, monitor=monitor)
         MONITORLISTS.append([len(tasksetList), 0, monitor.out])
 
 

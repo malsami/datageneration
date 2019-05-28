@@ -10,6 +10,8 @@ FORMAT per line: [Task, Task, ...]
 
 for pkg in PC.taskTypes:
     PC.make_tasks(pkg)
-    VI.plot_task_parameters(pkg)
+    # use this if you want to see the output
+    # this was commented out because it is normally used on a server with no DISPLAY attached
+    #VI.plot_task_parameters(pkg)
 
 
