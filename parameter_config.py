@@ -4,19 +4,26 @@ import logging
 import value_init as VI
 from taskgen.taskset import TaskSet
 # these are parameters to configure the distributor
-availableSessions = ['QemuSession','PandaSession']
+'''
+QemuSession: is for QEMU based boards, normally on the same host as this programm
+PandaSession: is for Pandaboards in use with a Mikrotik Switch which is capable of the commands written in "poe_on/off.sh" at the malsami/distributor repository
+Rasberry2/3Session: are for the Raspberry Pis, restrictions as stated for Pandaboards
+'''
+
+availableSessions = ['QemuSession','PandaSession','Raspberry2Session','Raspberry3Session']
 
 
-numberOfMachinesToStartWith = 9
-maxAllowedNumberOfMachines = 9
+#Machines in the cluster (for Raspberry Pis we had 20 for PandaSession we had less)
+numberOfMachinesToStartWith = 20
+maxAllowedNumberOfMachines = 20
 loggingLevel = logging.DEBUG
 delayAfterStartOfGenode = 60
 timesTasksetIsTriedBeforeLabeldBad = 2
 genodeTimeout = 30
 savedEveryNLaps = 90 # times 10s, so one save every 15 min
 
-
-sessionType = availableSessions[1]
+# Setting the SessionType to the above defined Raspberry2Session
+sessionType = availableSessions[2]
 taskTypes = ['hey', 'pi', 'tumatmul', 'cond_mod'] # to use all available task types use the following list instead:['hey', 'pi', 'tumatmul', 'cond_mod', 'cond_42']
 
 tasksPerLine = 100 # number of tasks put in one list
@@ -35,6 +42,7 @@ taskParameters = {	'PKG': # maximum possible amount of distinct tasksets is 1166
 				'CRITICALTIME' : (0, 0), # is assigned by function depending on PERIOD
 				'NUMBEROFJOBS': (1,8),#(1,10),
 				'OFFSET': (0,0),
+				# This is the RAM Quota of the tasks, it is set to 100MB and might be way overdimensional. For comparison it was kept this high but might have to be reconsidered
 				'QUOTA': (100, 100), #(1, 100),# we could just assign arbitrary big values to this and to caps as well, cause a working task, which is the assumption for an initial taskset, would have good values for that and both (caps and ram) are available in abundance 
 				'CAPS': (235, 235), #(10, 235)
 				'CORES' : (0, 0),
