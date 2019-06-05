@@ -1,9 +1,10 @@
 import sys
+import select
 sys.path.append('../')
-from signal import signal, alarm, SIGALRM
-from distributor.distributorClass import Distributor
-from distributor.monitors.dataGenerationMonitor import DataGenerationMonitor
-from distributor.clean import clean_function, clean_panda
+from distributor_service.distributor import Distributor
+from distributor_service.monitors.dataGenerationMonitor import DataGenerationMonitor
+from distributor_service.clean import clean_function, clean_panda
+
 import value_init as VI
 from taskgen.task import Task
 from taskgen.taskset import TaskSet
@@ -89,13 +90,19 @@ def load_tasksets(include_possibilities=True):
     global TASKSETS
     global BADTASKSETS
     global POSSIBLETASKSETS
-
+    print('loading tasksets')
     for option in ('good', 'bad'):
+        print(option)
         with open('./data/{}_tasksets'.format(option), 'r') as taskset_file:
             for line in taskset_file:# line format: (int, [ (bool,[{}]) ] )
-                level, tasksetList = eval(line)# level indicates size of tasksets
+                #print('got a line')
+                level = eval(line[1:2])# level indicates size of tasksets
                 add_if_not_exists(level)
-                for successful, tasksetInfo in tasksetList:
+                #print(level)
+                splitlist = (line[5:-2]+',').split('(')
+                for text in splitlist[1:]:
+                    dataTuple = '('+text[:-2]
+                    successful, tasksetInfo = eval(dataTuple)
                     taskset = TaskSet([])
                     for taskDict in tasksetInfo:
                         taskset.append(Task(taskDict))
@@ -103,14 +110,16 @@ def load_tasksets(include_possibilities=True):
                         TASKSETS[level].append((successful,taskset))
                     else:
                         BADTASKSETS[level].append((successful,taskset))
+        
     if include_possibilities:
+        print('possible')
         try:
             with open('./data/possible_tasksets','r') as taskset_file:
                 for line in taskset_file:# format: [taskset_hash], taskset_hash is type string
                     POSSIBLETASKSETS += eval(line)
         except FileNotFoundError as e:
             print('There were no possible tasksets.')
-
+    print('done')
 """
     write_tasksets_to_file() is for basic book-keeping and we will write the good,bad and possible tasksets into the appropriate
     files. 
@@ -286,14 +295,14 @@ def show_status():
     for pkg in PC.taskTypes:
         print("Number of tasks in TASKS[", pkg, "]: ", len(TASKS[pkg]))
 
-    try:
-        print('you can increase the current level (i)')
-        print('or you can set the level to one of these values: {}'.format(list(TASKSETS.keys())))
-        if CURRENTTASKSETSIZE == 1:
-            print('you can also add more tasks for a pkg, just type the name of one of these: {}'.format(PC.taskTypes))
-        alarm(10)
-        option = input()
-        alarm(0)
+    print('you can increase the current level (i)')
+    print('or you can set the level to one of these values: {}'.format(list(TASKSETS.keys())))
+    if CURRENTTASKSETSIZE == 1:
+        print('you can also add more tasks for a pkg, just type the name of one of these: {}'.format(PC.taskTypes))
+    #wait for input
+    i, _, _ = select.select( [sys.stdin], [], [], 10 )
+    if i:
+        option = sys.stdin.readline().strip()
         if option == 'i':
             print('RUNNINGTASKSETS will be finished and then the level will be raised.')
             SAVE_POSSIBLES[CURRENTTASKSETSIZE] = POSSIBLETASKSETS
@@ -309,17 +318,18 @@ def show_status():
                 if intOption in TASKSETS:
                     # print(intOption,type(intOption),[x for k,l in TASKS.items() for x in l],'\n', TASKS)
                     if intOption == 1 and not [x for k,l in TASKS.items() for x in l]: 
-                        try:
-                            print('There is no unexecuted Tasks, do you want to add more of everything? [y/n]')
-                            alarm(5)
-                            option = input()
-                            alarm(0)
+                        print('There is no unexecuted Tasks, do you want to add more of everything? [y/n]')
+                        i, _, _ = select.select( [sys.stdin], [], [], 5 )
+                        if i:
+                            option = sys.stdin.readline().strip()
                             if option == 'y':
                                 for task in PC.taskTypes:
                                     PC.make_tasks(task)
                                     load_tasks(packages=[task], addToPossible=False)
-                        except ZeroDivisionError:
-                            pass
+                            elif option =='n':
+                                pass
+                            else:
+                                print('option was',option, 'not "y" or "n"')
                     newLevel = intOption
                     print('RUNNINGTASKSETS will be finished and then the level will be set to {}.'.format(intOption))
                     SAVE_POSSIBLES[CURRENTTASKSETSIZE] = POSSIBLETASKSETS
@@ -329,8 +339,7 @@ def show_status():
                     print('{} was not a viable option.'.format(intOption))
             except ValueError:
                 print('{} was not a viable option.'.format(option))
-    except ZeroDivisionError:
-        pass
+                
     return
 
 
@@ -346,11 +355,10 @@ def halt_machines(distributor, hard=False):
     else:
         distributor.shut_down_all_machines()
     # ask if current running should be cleared (clear jobQueue)
-    try:
-        print('Do you also want to clear the current RUNNINGTASKSETS?[y/n]')
-        alarm(10)
-        option = input()
-        alarm(0)
+    print('Do you also want to clear the current RUNNINGTASKSETS?[y/n]')
+    i, _, _ = select.select( [sys.stdin], [], [], 10 )
+    if i:
+        option = sys.stdin.readline().strip()
         if option == 'y':
             print('will clear distributor jobQueue, RUNNINGTASKSETS and MONITORLISTS...')
             # clear distributor jobsQueue
@@ -367,8 +375,7 @@ def halt_machines(distributor, hard=False):
             MONITORLISTS = []
             print('cleared')
             return
-    except ZeroDivisionError:
-        pass
+
     print('not cleared.')
     return
 
@@ -438,8 +445,6 @@ def main(initialExecution=True):
     add_job(distributor=distributor, numberOfTasksets=PC.maxAllowedNumberOfMachines, tasksetSize=CURRENTTASKSETSIZE)
     add_job(distributor=distributor, numberOfTasksets=PC.maxAllowedNumberOfMachines, tasksetSize=CURRENTTASKSETSIZE)
 
-    # creating a signal for alarm - will be called upton alarm
-    signal(SIGALRM, lambda x, y: 1 / 0)
     # have output to explain controll options
     inputMessage = 'options are (d)ebug, show status(ss), (h)alt/(k)ill machines, (r)esume machines, (s)ave current progress, e(x)it.'
     print(inputMessage)
@@ -456,11 +461,10 @@ def main(initialExecution=True):
                 aORb = not aORb
         # main programm loop
         # wait for input:
-        try:
-            alarm(10)  # argument should be a variable
-            option = input()
-            alarm(0)
-        except ZeroDivisionError:
+        i, _, _ = select.select( [sys.stdin], [], [], 10 )
+        if i:
+            option = sys.stdin.readline().strip()
+        else:
             option = ''
         # act depending on option provided
         if option == 'ss': # show status
