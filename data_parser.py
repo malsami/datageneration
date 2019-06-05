@@ -8,12 +8,15 @@ single_tasks = []
 job_ID = 0
 def parse_from_files():
     for state in ('good','bad'):
-        with open('data/'+state+'_tasksets','r') as file:
+        with open('data/'+state+'_tasksetsA','r') as file:
             # each line in the file represents a tuple (tasksetsize, listOfTasksets)
             # listOfTasksets is a list of tuples (success:bool, Taskset)
             for line in file:
-                level, listOfTasksets = eval(line)
-                for success_taskset in listOfTasksets:
+                level = eval(line[1:2])
+                splitlist = (line[5:-2]+',').split('(')
+                for text in splitlist[1:]:
+                    dataTuple = '('+text[:-2]
+                    success_taskset = eval(dataTuple)
                     taskset_list.append(success_taskset)
                     if level == 1:
                         #print('there was a level 1')
