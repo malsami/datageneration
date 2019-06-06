@@ -6,9 +6,10 @@ taskset_list = []
 tasks = []
 single_tasks = []
 job_ID = 0
-def parse_from_files():
+def parse_from_files(fileSuffix=''):
     for state in ('good','bad'):
-        with open('data/'+state+'_tasksetsA','r') as file:
+        with open('data/'+state+'_tasksets'+fileSuffix,'r') as file:
+            print('data/'+state+'_tasksets'+fileSuffix) 
             # each line in the file represents a tuple (tasksetsize, listOfTasksets)
             # listOfTasksets is a list of tuples (success:bool, Taskset)
             for line in file:
@@ -150,6 +151,10 @@ def create_tables():
 
 if __name__ == "__main__":
     name = sys.argv[1]
+    try:
+        fileSuffix = sys.argv[2]
+    except IndexError:
+        fileSuffix = ''
     database = sqlite3.connect(name+'.db')
     db = database.cursor()
 
@@ -158,8 +163,12 @@ if __name__ == "__main__":
     db.execute('DROP TABLE IF EXISTS TaskSet')
 
     create_tables()
-    
-    parse_from_files()
+    if fileSuffix == 'A' or fileSuffix == 'B':
+        parse_from_files(fileSuffix)
+    elif fileSuffix == '':
+        parse_from_files()
+    else:
+        raise ValueError("sys.argv[2] was '"+fileSuffix+"' but viable options are only 'A', 'B' or nothing" )
     write_tasks_to_db()
     write_taskset_and_job_to_db()
 

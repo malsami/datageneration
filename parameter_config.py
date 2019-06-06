@@ -7,8 +7,8 @@ from taskgen.taskset import TaskSet
 availableSessions = ['QemuSession','PandaSession']
 
 
-numberOfMachinesToStartWith = 9
-maxAllowedNumberOfMachines = 9
+numberOfMachinesToStartWith = 1 
+maxAllowedNumberOfMachines = 1
 loggingLevel = logging.DEBUG
 delayAfterStartOfGenode = 60
 timesTasksetIsTriedBeforeLabeldBad = 2
@@ -16,7 +16,7 @@ genodeTimeout = 30
 savedEveryNLaps = 90 # times 10s, so one save every 15 min
 
 
-sessionType = availableSessions[1]
+sessionType = availableSessions[0]
 taskTypes = ['hey', 'pi', 'tumatmul', 'cond_mod'] # to use all available task types use the following list instead:['hey', 'pi', 'tumatmul', 'cond_mod', 'cond_42']
 
 tasksPerLine = 100 # number of tasks put in one list

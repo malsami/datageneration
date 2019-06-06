@@ -1,9 +1,9 @@
 import sys
 import select
 sys.path.append('../')
-from distributor_service.distributor import Distributor
-from distributor_service.monitors.dataGenerationMonitor import DataGenerationMonitor
-from distributor_service.clean import clean_function, clean_panda
+from distributor.distributorClass import Distributor
+from distributor.monitors.dataGenerationMonitor import DataGenerationMonitor
+from distributor.clean import clean_function, clean_panda
 
 import value_init as VI
 from taskgen.task import Task
@@ -208,7 +208,7 @@ def add_job(distributor, numberOfTasksets=1, tasksetSize=1):
         except IndexError:
             break
     if tasksetList:
-        distributor.add_job(tasksetList, monitor=monitor, is_list=True)
+        distributor.add_job(tasksetList, monitor=monitor)
         MONITORLISTS.append([len(tasksetList), 0, monitor.out])
 
 
