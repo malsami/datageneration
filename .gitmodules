@@ -1,0 +1,3 @@
+[submodule "taskgen"]
+	path = taskgen
+	url = https://github.com/malsami/taskgen
