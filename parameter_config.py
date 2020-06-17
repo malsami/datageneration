@@ -1,5 +1,4 @@
-import sys
-sys.path.append('../')
+
 import logging
 import value_init as VI
 from taskgen.taskset import TaskSet
@@ -100,7 +99,6 @@ def get_task_hash(task):
 	
 	return hash_value
 
-
 def hash_to_taskset(hash_value):
 	taskset = TaskSet([])
 	for i in range(int(len(hash_value)/HASH_LENGTH_PER_TASK)):
@@ -119,7 +117,6 @@ def hash_to_taskset(hash_value):
 		arg = int(hash_value[hash_offset +37:hash_offset +52])
 		taskset.append(VI.create_task(input_pkg=pkg, input_priority=priority, input_deadline=deadline, input_period=period, input_criticaltime=criticaltime, input_numberofjobs=numberofjobs, input_offset=offset, input_quota=quota, input_caps=caps, input_cores=cores, input_coreoffset=coreoffset, input_arg1=arg))
 	return taskset
-
 
 def make_tasks(pkg):
 	tasks = ''
