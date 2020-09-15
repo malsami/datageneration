@@ -275,6 +275,7 @@ class DatabaseConnection:
             taskset_task_id = task['id']
             for job_number, job in task['jobs'].items():
                 if len(job) != 3:
+                    print('job that is to short: ',job, 'for task id', task_id, 'and taskset id', self.level[size]['taskset_table_size'])
                     continue
                 try:
                     start_date, stop_date, exit_value = job
@@ -288,7 +289,7 @@ class DatabaseConnection:
                                                      int(job_number)), taskset_size=size)
                     self.level[size]['job_table_size'] += 1
                 except IndexError as e:
-                    print('there was an error: ', job, '\n and the task: ', task)
+                    print('there was an error: ', job, '\n and the task id: ', task_id, 'and taskset id', self.level[size]['taskset_table_size'])
         self._add_taskset_to_TaskSet_table(taskset=taskset_values, size=size)
         taskset_hash = ''
         for task in taskset:
@@ -305,13 +306,16 @@ class DatabaseConnection:
     @staticmethod
     def calculate_success(taskset):
         successful = True
+        read_at_least_one_job = False
         for task in taskset:
             for _, job in task['jobs'].items():
                 try:
                     successful &= job[2] == 'EXIT'
+                    read_at_least_one_job = True
                 except IndexError:
+                    print('index error while calculating success with job',job, 'in taskset', taskset)
                     return 0
-        return 1 if successful else 0
+        return 1 if successful and read_at_least_one_job else 0
 
     @staticmethod
     def get_task_hash(task):

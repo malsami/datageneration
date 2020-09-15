@@ -20,6 +20,8 @@ def read_from_old_format(db, path='./data/', files=('bad_tasksets','good_taskset
                         bad_read = True
                     if not good_finished:
                         good_read = True
+                #if good_taskset_level_count == bad_taskset_level_count and good_taskset_level_count == 3:
+                #    return
                 #good
                 if good_read:
                     good_char = good_taskset_file.read(1)
