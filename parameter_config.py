@@ -1,5 +1,4 @@
-import sys
-sys.path.append('../')
+
 import logging
 import value_init as VI
 from taskgen.taskset import TaskSet
@@ -7,8 +6,8 @@ from taskgen.taskset import TaskSet
 availableSessions = ['QemuSession','PandaSession']
 
 
-numberOfMachinesToStartWith = 9
-maxAllowedNumberOfMachines = 9
+numberOfMachinesToStartWith = 1 
+maxAllowedNumberOfMachines = 1
 loggingLevel = logging.DEBUG
 delayAfterStartOfGenode = 60
 timesTasksetIsTriedBeforeLabeldBad = 2
@@ -16,7 +15,7 @@ genodeTimeout = 30
 savedEveryNLaps = 90 # times 10s, so one save every 15 min
 
 
-sessionType = availableSessions[1]
+sessionType = availableSessions[0]
 taskTypes = ['hey', 'pi', 'tumatmul', 'cond_mod'] # to use all available task types use the following list instead:['hey', 'pi', 'tumatmul', 'cond_mod', 'cond_42']
 
 tasksPerLine = 100 # number of tasks put in one list
@@ -100,7 +99,6 @@ def get_task_hash(task):
 	
 	return hash_value
 
-
 def hash_to_taskset(hash_value):
 	taskset = TaskSet([])
 	for i in range(int(len(hash_value)/HASH_LENGTH_PER_TASK)):
@@ -119,7 +117,6 @@ def hash_to_taskset(hash_value):
 		arg = int(hash_value[hash_offset +37:hash_offset +52])
 		taskset.append(VI.create_task(input_pkg=pkg, input_priority=priority, input_deadline=deadline, input_period=period, input_criticaltime=criticaltime, input_numberofjobs=numberofjobs, input_offset=offset, input_quota=quota, input_caps=caps, input_cores=cores, input_coreoffset=coreoffset, input_arg1=arg))
 	return taskset
-
 
 def make_tasks(pkg):
 	tasks = ''

@@ -1,0 +1,6 @@
+[submodule "taskgen"]
+	path = taskgen
+	url = https://github.com/malsami/taskgen
+[submodule "distributor"]
+	path = distributor
+	url = https://github.com/malsami/distributor

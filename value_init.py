@@ -1,19 +1,12 @@
 import sys
-sys.path.append('../')
 import random
 import copy
 import math
 import matplotlib.pyplot as plt
-from taskgen.blocks import *
+#from taskgen.blocks import *
 from taskgen.task import Task
 from taskgen.taskset import TaskSet
 import parameter_config as PC
-
-
-
-def task_dict_to_list(task_dict,pkg):
-	return [TaskSet([t]) for t in task_dict[pkg]]
-
 
 def combine_random(task_dict, number_of_wanted_sets, tasks_per_set,input_parameter):
     resulting_list = []
@@ -37,7 +30,6 @@ def verify_list_of_tasks(task_list):
             ids.append(task['id'])
     return True
 
-
 def create_task(input_pkg='hey', input_priority=1, input_deadline=0, input_period=1000, input_criticaltime=0, input_numberofjobs=1, input_offset=0, input_quota=10, input_caps=50, input_cores=2, input_coreoffset=1, input_arg1=0):
     dict_pkg = {"pkg" : input_pkg}
     dict_priority = {'priority' : input_priority}
@@ -53,7 +45,6 @@ def create_task(input_pkg='hey', input_priority=1, input_deadline=0, input_perio
     dict_arg1 = {"config" : {"arg1" : input_arg1}}
     return Task(dict_pkg, dict_priority, dict_deadline, dict_period, dict_criticaltime, dict_numberofjobs, dict_offset, dict_quota, dict_caps, dict_cores, dict_coreoffset, dict_arg1)
 
-
 def plot_distribution(x,y,titel, ylable, xlable,info=False):
 	fig, ax = plt.subplots()
 	ax.bar(x,y)
@@ -64,7 +55,6 @@ def plot_distribution(x,y,titel, ylable, xlable,info=False):
 		for i in x:
 			ax.text(i,y[i-1]/2, '%d' %y[i-1], ha='center', va='bottom')
 	# plt.show()
-
 
 def plot_task_parameters(pkg):
     taskHashes = []
@@ -88,23 +78,18 @@ def plot_task_parameters(pkg):
             plot_distribution(values.keys(), values.values(), '%s Distribution' % key, 'Amount', 'Value')
     plt.show()
 
-
 def random_value(scope):
 	return random.randint(scope[0],scope[1])
-
 
 def CRITICALTIME(period):
 	stoptime = 500
 	return max(period - stoptime,0)
-
 
 def base_for_pkg(pkg):
     if pkg == 'cond_mod':
         return 3
     else:
         return 2
-    
-
 
 def generate_tasks(n, parameters):
     tasks = { 'hey':[],
@@ -130,7 +115,6 @@ def generate_tasks(n, parameters):
     return tasks
 
 def generate_tasks_of_type(n, pkg, parameters):
-    
     tasks = []
     for i in range(n):
         i_pkg = pkg 
